@@ -77,9 +77,22 @@ function unwrapValue(d) {
 /**
  * Create a Cloudgate gateway client.
  *
+ * The effective base is `{baseUrl}/{environment}`; request paths are
+ * appended to that, so the route (e.g. "/api/contact") stays fully in
+ * the caller's hands:
+ *
+ *   baseUrl: "https://acme.cloudgate.dev", environment: "prd"
+ *   client.post("/api/contact", body)
+ *   -> POST https://acme.cloudgate.dev/prd/api/contact
+ *
+ * `environment` is optional — omit it to treat `baseUrl` as the full base.
+ *
  * @param {object} options
- * @param {string} options.baseUrl    Gateway base URL incl. project path,
- *                                    e.g. "https://acme.cloudgate.dev/prd/api"
+ * @param {string} options.baseUrl    Gateway origin,
+ *                                    e.g. "https://acme.cloudgate.dev"
+ *                                    or "http://acme.localhost:44301"
+ * @param {string} [options.environment] Environment path segment appended to
+ *                                    the origin, e.g. "prd" or "sbx".
  * @param {string} [options.apiKey]   Gateway API key. Requests are sent
  *                                    unsigned when key/secret are omitted.
  * @param {string} [options.apiSecret] Gateway API secret.
@@ -89,14 +102,17 @@ function unwrapValue(d) {
  */
 export function createCloudgateClient({
   baseUrl,
+  environment = "",
   apiKey = "",
   apiSecret = "",
   timeoutMs = 30000,
   fetch: fetchImpl,
   headers: defaultHeaders = {},
 } = {}) {
-  const base = String(baseUrl ?? "").trim().replace(/\/$/, "");
-  if (!base) throw new CloudgateError("baseUrl is required");
+  const origin = String(baseUrl ?? "").trim().replace(/\/$/, "");
+  if (!origin) throw new CloudgateError("baseUrl is required");
+  const envSegment = String(environment ?? "").trim().replace(/^\/+|\/+$/g, "");
+  const base = envSegment ? `${origin}/${envSegment}` : origin;
   const key = String(apiKey).trim();
   const secret = String(apiSecret).trim();
   const doFetch = fetchImpl ?? globalThis.fetch;
@@ -205,8 +221,10 @@ export function createCloudgateClient({
   return {
     /** True when requests are HMAC-signed (key + secret provided). */
     signingEnabled,
-    /** The normalised gateway base URL. */
+    /** The effective base URL requests are made against ({origin}/{environment}). */
     baseUrl: base,
+    /** The environment segment in use ("" when none was given). */
+    environment: envSegment,
     request,
     /** GET {base}{path} */
     get: (path, opts = {}) => request(path, { ...opts, method: "GET" }),

@@ -27,19 +27,21 @@ npm install @cloudgatedevs/cloudgate-client
 import { createCloudgateClient } from "@cloudgatedevs/cloudgate-client";
 
 const cloudgate = createCloudgateClient({
-  baseUrl: "https://acme.cloudgate.dev/prd/api", // gateway base incl. project path
+  baseUrl: "https://acme.cloudgate.dev", // gateway origin only
+  environment: "prd",                    // prd | sbx — becomes {baseUrl}/{environment}
   apiKey: "your-api-key",
   apiSecret: "your-api-secret",
 });
 
-// GET with query params
-const stats = await cloudgate.get("/explorer/stats");
-const page = await cloudgate.get("/payments/tickets", {
+// You own the full route after the environment segment:
+// GET https://acme.cloudgate.dev/prd/api/explorer/stats
+const stats = await cloudgate.get("/api/explorer/stats");
+const page = await cloudgate.get("/api/payments/tickets", {
   params: { skip: 0, take: 25, status: "pending" },
 });
 
-// POST a JSON body
-const created = await cloudgate.post("/contact", {
+// POST https://acme.cloudgate.dev/prd/api/contact
+const created = await cloudgate.post("/api/contact", {
   name: "Jane Doe",
   email: "jane@company.com",
   message: "Hello!",
@@ -51,7 +53,8 @@ const created = await cloudgate.post("/contact", {
 Keep credentials in `.env` (never commit it):
 
 ```bash
-VITE_CLOUDGATE_API_URL=https://acme.cloudgate.dev/prd/api
+VITE_CLOUDGATE_API_URL=https://acme.cloudgate.dev
+VITE_ENVIRONMENT=prd
 VITE_API_KEY=...
 VITE_API_SECRET=...
 ```
@@ -62,6 +65,7 @@ import { createCloudgateClient } from "@cloudgatedevs/cloudgate-client";
 
 export const cloudgate = createCloudgateClient({
   baseUrl: import.meta.env.VITE_CLOUDGATE_API_URL,
+  environment: import.meta.env.VITE_ENVIRONMENT,
   apiKey: import.meta.env.VITE_API_KEY,
   apiSecret: import.meta.env.VITE_API_SECRET,
 });
@@ -79,11 +83,12 @@ import { createCloudgateClient } from "@cloudgatedevs/cloudgate-client";
 
 const cloudgate = createCloudgateClient({
   baseUrl: process.env.CLOUDGATE_API_URL,
+  environment: process.env.CLOUDGATE_ENVIRONMENT,
   apiKey: process.env.CLOUDGATE_API_KEY,
   apiSecret: process.env.CLOUDGATE_API_SECRET,
 });
 
-const rows = await cloudgate.get("/reports/daily", { params: { date: "2026-07-12" } });
+const rows = await cloudgate.get("/api/reports/daily", { params: { date: "2026-07-12" } });
 ```
 
 ## API
@@ -92,7 +97,8 @@ const rows = await cloudgate.get("/reports/daily", { params: { date: "2026-07-12
 
 | Option | Type | Notes |
 | --- | --- | --- |
-| `baseUrl` | `string` (required) | Gateway base URL incl. project path; endpoints are appended. |
+| `baseUrl` | `string` (required) | Gateway origin, e.g. `https://acme.cloudgate.dev` or `http://acme.localhost:44301`. |
+| `environment` | `string` | Environment segment (`prd`, `sbx`, …) appended to the origin. Omit to use `baseUrl` as-is. |
 | `apiKey` | `string` | Omit both key and secret to send unsigned requests. |
 | `apiSecret` | `string` | Used for HMAC-SHA512 signing. |
 | `timeoutMs` | `number` | Default per-request timeout (default `30000`). |

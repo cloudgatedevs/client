@@ -17,11 +17,18 @@ export class CloudgateError extends Error {
 
 export interface CloudgateClientOptions {
   /**
-   * Gateway base URL including the project path.
-   * Endpoints are appended, e.g. `${baseUrl}/contact`.
-   * @example "https://acme.cloudgate.dev/prd/api"
+   * Gateway origin (no environment or route).
+   * @example "https://acme.cloudgate.dev"
+   * @example "http://acme.localhost:44301"
    */
   baseUrl: string;
+  /**
+   * Environment path segment appended to the origin, e.g. "prd" or "sbx".
+   * The effective base becomes `${baseUrl}/${environment}` and request
+   * paths (e.g. "/api/contact") are appended to that.
+   * Omit to treat `baseUrl` as the full base.
+   */
+  environment?: string;
   /** Gateway API key. Requests are sent unsigned when key/secret are omitted. */
   apiKey?: string;
   /** Gateway API secret used for HMAC-SHA512 request signing. */
@@ -55,8 +62,10 @@ export interface RequestOptions {
 export interface CloudgateClient {
   /** True when requests are HMAC-signed (key + secret provided). */
   readonly signingEnabled: boolean;
-  /** The normalised gateway base URL. */
+  /** The effective base URL requests are made against ({origin}/{environment}). */
   readonly baseUrl: string;
+  /** The environment segment in use ("" when none was given). */
+  readonly environment: string;
   /** Perform a request against the gateway. */
   request<T = unknown>(path: string, opts?: RequestOptions): Promise<T>;
   /** GET `{base}{path}` */
@@ -82,13 +91,14 @@ export interface CloudgateClient {
  * import { createCloudgateClient } from "@cloudgatedevs/cloudgate-client";
  *
  * const cloudgate = createCloudgateClient({
- *   baseUrl: import.meta.env.VITE_CLOUDGATE_API_URL,
+ *   baseUrl: import.meta.env.VITE_CLOUDGATE_API_URL,   // https://acme.cloudgate.dev
+ *   environment: import.meta.env.VITE_ENVIRONMENT,     // prd | sbx
  *   apiKey: import.meta.env.VITE_API_KEY,
  *   apiSecret: import.meta.env.VITE_API_SECRET,
  * });
  *
- * const stats = await cloudgate.get("/explorer/stats");
- * await cloudgate.post("/contact", { name, email, message });
+ * const stats = await cloudgate.get("/api/explorer/stats");
+ * await cloudgate.post("/api/contact", { name, email, message });
  */
 export function createCloudgateClient(
   options: CloudgateClientOptions

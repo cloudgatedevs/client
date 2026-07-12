@@ -1,6 +1,6 @@
 {
   "name": "@cloudgatedevs/cloudgate-client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tiny, dependency-free client for Cloudgate workflow-API gateways with HMAC-SHA512 request signing. Browser + Node 18+.",
   "type": "module",
   "main": "./src/index.js",
@@ -34,11 +34,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cloudgatedevs/cloudgate-client.git"
+    "url": "git+https://github.com/cloudgatedevs/client.git"
   },
-  "homepage": "https://github.com/cloudgatedevs/cloudgate-client#readme",
+  "homepage": "https://github.com/cloudgatedevs/client#readme",
   "bugs": {
-    "url": "https://github.com/cloudgatedevs/cloudgate-client/issues"
+    "url": "https://github.com/cloudgatedevs/client/issues"
   },
   "author": "Cloudgate Devs (https://cloudgate.dev)",
   "license": "MIT",

@@ -142,6 +142,31 @@ test("throws when baseUrl is missing", () => {
   assert.throws(() => createCloudgateClient({}), CloudgateError);
 });
 
+test("environment segment is inserted between origin and path", async () => {
+  const origin = baseUrl.replace(/\/api$/, ""); // http://127.0.0.1:port
+  const client = createCloudgateClient({
+    baseUrl: origin,
+    environment: "api", // stands in for prd/sbx against the mock
+    apiKey: API_KEY,
+    apiSecret: API_SECRET,
+  });
+  assert.equal(client.baseUrl, `${origin}/api`);
+  assert.equal(client.environment, "api");
+  const res = await client.get("/things", { params: { a: 1 } });
+  assert.equal(res.ok, true);
+  assert.equal(lastRequest.url, "/api/things?a=1");
+  assert.equal(lastRequest.sigValid, true, "signature covers the environment segment");
+});
+
+test("environment accepts stray slashes and can be omitted", async () => {
+  const origin = baseUrl.replace(/\/api$/, "");
+  const slashy = createCloudgateClient({ baseUrl: origin + "/", environment: "/api/" });
+  assert.equal(slashy.baseUrl, `${origin}/api`);
+  const none = createCloudgateClient({ baseUrl });
+  assert.equal(none.baseUrl, baseUrl);
+  assert.equal(none.environment, "");
+});
+
 test("PUT / PATCH / DELETE are signed too", async () => {
   const client = makeClient();
   await client.put("/things/1", { a: 1 });
