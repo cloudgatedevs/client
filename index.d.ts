@@ -25,10 +25,18 @@ export interface CloudgateClientOptions {
   /**
    * Environment path segment appended to the origin, e.g. "prd" or "sbx".
    * The effective base becomes `${baseUrl}/${environment}` and request
-   * paths (e.g. "/api/contact") are appended to that.
+   * paths (e.g. "/contact") are appended to that.
    * Omit to treat `baseUrl` as the full base.
    */
   environment?: string;
+  /**
+   * Fixed path prefix appended after the environment — typically the
+   * controller / project path, e.g. "api". Configure it once here so request
+   * paths are just the route ("/contact") and the controller path is not
+   * repeated on every call or entangled with `environment`. May be
+   * multi-segment ("api/v2"). Independent of `environment`.
+   */
+  basePath?: string;
   /** Gateway API key. Requests are sent unsigned when key/secret are omitted. */
   apiKey?: string;
   /** Gateway API secret used for HMAC-SHA512 request signing. */
@@ -69,6 +77,8 @@ export interface CloudgateClient {
   readonly baseUrl: string;
   /** The environment segment in use ("" when none was given). */
   readonly environment: string;
+  /** The base path segment in use ("" when none was given). */
+  readonly basePath: string;
   /** Perform a request against the gateway. */
   request<T = unknown>(path: string, opts?: RequestOptions): Promise<T>;
   /** GET `{base}{path}` */

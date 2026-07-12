@@ -27,21 +27,22 @@ npm install @cloudgatedevs/cloudgate-client
 import { createCloudgateClient } from "@cloudgatedevs/cloudgate-client";
 
 const cloudgate = createCloudgateClient({
-  baseUrl: "https://acme.cloudgate.dev", // gateway origin only
-  environment: "prd",                    // prd | sbx — becomes {baseUrl}/{environment}
+  baseUrl: "https://acme.api.cloudgate.dev", // gateway origin only
+  environment: "prod",                       // prod | sbx — becomes {baseUrl}/{environment}
+  basePath: "api",                           // controller/project path, set once
   apiKey: "your-api-key",
   apiSecret: "your-api-secret",
 });
 
-// You own the full route after the environment segment:
-// GET https://acme.cloudgate.dev/prd/api/explorer/stats
-const stats = await cloudgate.get("/api/explorer/stats");
-const page = await cloudgate.get("/api/payments/tickets", {
+// Request paths are just the route — env + basePath are prepended for you:
+// GET https://acme.api.cloudgate.dev/prod/api/explorer/stats
+const stats = await cloudgate.get("/explorer/stats");
+const page = await cloudgate.get("/payments/tickets", {
   params: { skip: 0, take: 25, status: "pending" },
 });
 
-// POST https://acme.cloudgate.dev/prd/api/contact
-const created = await cloudgate.post("/api/contact", {
+// POST https://acme.api.cloudgate.dev/prod/api/contact
+const created = await cloudgate.post("/contact", {
   name: "Jane Doe",
   email: "jane@company.com",
   message: "Hello!",
@@ -98,7 +99,29 @@ const rows = await cloudgate.get("/api/reports/daily", { params: { date: "2026-0
 | Option | Type | Notes |
 | --- | --- | --- |
 | `baseUrl` | `string` (required) | Gateway origin, e.g. `https://acme.cloudgate.dev` or `http://acme.localhost:44301`. |
-| `environment` | `string` | Environment segment (`prd`, `sbx`, …) appended to the origin. Omit to use `baseUrl` as-is. |
+| `environment` | `string` | Environment segment (`prod`, `sbx`, …) appended to the origin. Omit to use `baseUrl` as-is. |
+| `basePath` | `string` | **Optional** convenience prefix appended after the environment — usually a controller/project path, e.g. `api`. Set it to pin one controller and then call bare routes (`/contact`). **Omit it** (the default) to keep the client general: pass the full path per call, controller included. Never a limit — just a shortcut. |
+
+### One client, any controller (default)
+
+Only `environment` shapes the URL automatically (the `/prod` or `/sbx`
+segment). Leave `basePath` unset and pass the full path — controller and
+route — on each call, so a single client reaches everything:
+
+```js
+const cg = createCloudgateClient({
+  baseUrl: "https://acme.api.cloudgate.dev",
+  environment: "prod",
+  apiKey, apiSecret,
+});
+
+await cg.post("/api/contact", body);      // → …/prod/api/contact
+await cg.get("/crm/leads", { params });   // → …/prod/crm/leads
+await cg.get("/some-project/widgets");    // → …/prod/some-project/widgets
+```
+
+Set `basePath: "api"` only if you specifically want to pin one controller and
+then call `cg.post("/contact")`.
 | `apiKey` | `string` | Omit both key and secret to send unsigned requests. |
 | `apiSecret` | `string` | Used for HMAC-SHA512 signing. |
 | `timeoutMs` | `number` | Default per-request timeout (default `30000`). |

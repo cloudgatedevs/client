@@ -167,6 +167,33 @@ test("environment accepts stray slashes and can be omitted", async () => {
   assert.equal(none.environment, "");
 });
 
+test("basePath is appended after environment and signed", async () => {
+  const origin = baseUrl.replace(/\/api$/, ""); // http://127.0.0.1:port
+  const client = createCloudgateClient({
+    baseUrl: origin,
+    environment: "prod",
+    basePath: "api", // controller path configured once at construction
+    apiKey: API_KEY,
+    apiSecret: API_SECRET,
+  });
+  assert.equal(client.baseUrl, `${origin}/prod/api`);
+  assert.equal(client.basePath, "api");
+  const res = await client.post("/contact", { hi: 1 });
+  assert.equal(res.ok, true);
+  // route resolves to origin/{env}/{basePath}/{route} and the signature
+  // covers the full path
+  assert.equal(lastRequest.url, "/prod/api/contact");
+  assert.equal(lastRequest.sigValid, true);
+});
+
+test("basePath works without an environment", () => {
+  const origin = baseUrl.replace(/\/api$/, "");
+  const c = createCloudgateClient({ baseUrl: origin, basePath: "/api/" });
+  assert.equal(c.baseUrl, `${origin}/api`);
+  assert.equal(c.environment, "");
+  assert.equal(c.basePath, "api");
+});
+
 test("PUT / PATCH / DELETE are signed too", async () => {
   const client = makeClient();
   await client.put("/things/1", { a: 1 });
