@@ -143,6 +143,70 @@ try {
 }
 ```
 
+## Require login (IdP auth)
+
+The package also ships the hosted-login session flow used across Cloudgate
+apps. Set `VITE_REQUIRE_LOGIN=true` and unauthenticated visitors are redirected
+to the IdP login page **before the page loads** — the current URL is passed as
+`returnUrl` at redirect time, so there is nothing to configure for it.
+
+```bash
+VITE_REQUIRE_LOGIN=true
+VITE_IDP_BASE_URL=https://idp.cloudgate.dev
+VITE_IDP_TENANCY_NAME=acme     # optional — falls back to ?idp_tenant= or the subdomain
+```
+
+```js
+// src/services/auth.js — create once, import everywhere
+import { createCloudgateAuth } from "@cloudgatedevs/cloudgate-client";
+
+export const auth = createCloudgateAuth({
+  idpBaseUrl: import.meta.env.VITE_IDP_BASE_URL,
+  tenancyName: import.meta.env.VITE_IDP_TENANCY_NAME,
+  requireLogin: import.meta.env.VITE_REQUIRE_LOGIN,
+});
+```
+
+```js
+// src/main.jsx — gate the page load
+import { auth } from "./services/auth.js";
+
+auth.init().then((session) => {
+  if (auth.requireLogin && !session) return; // browser is redirecting to login
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+});
+```
+
+`init()` does the whole dance: it consumes the `?access_token=…` /
+`?refresh_token=…` params the IdP appends on the way back (and cleans them out
+of the address bar), otherwise restores the stored session from
+`localStorage`, silently refreshes an expired token via
+`POST {idpApiUrl}/api/idp/{tenant}/Refresh`, and only then — when
+`requireLogin` is on and no session could be established — redirects to
+`{idpBaseUrl}/idp/{tenant}/login?returnUrl={current page}`.
+
+After boot:
+
+```js
+auth.isAuthenticated();  // boolean
+auth.getUser();          // { id, displayName, email, claims } from the JWT
+auth.getAccessToken();   // valid token or null
+auth.logout();           // clear session (+ redirect back to login by default)
+```
+
+To send the user's bearer token on gateway calls, pass headers as a function —
+it's evaluated per request, so it always uses the current token:
+
+```js
+const cloudgate = createCloudgateClient({
+  baseUrl: import.meta.env.VITE_CLOUDGATE_API_URL,
+  environment: import.meta.env.VITE_ENVIRONMENT,
+  apiKey: import.meta.env.VITE_API_KEY,
+  apiSecret: import.meta.env.VITE_API_SECRET,
+  headers: () => auth.authHeader(), // Authorization: Bearer … when signed in
+});
+```
+
 ## Tests
 
 ```bash

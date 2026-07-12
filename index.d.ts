@@ -37,8 +37,11 @@ export interface CloudgateClientOptions {
   timeoutMs?: number;
   /** Custom fetch implementation (tests, polyfills). Defaults to global fetch. */
   fetch?: typeof fetch;
-  /** Extra headers added to every request. */
-  headers?: Record<string, string>;
+  /**
+   * Extra headers added to every request. Pass a function to compute them per
+   * request — e.g. `() => auth.authHeader()` to attach the IdP bearer token.
+   */
+  headers?: Record<string, string> | (() => Record<string, string>);
 }
 
 export interface RequestOptions {
@@ -103,5 +106,108 @@ export interface CloudgateClient {
 export function createCloudgateClient(
   options: CloudgateClientOptions
 ): CloudgateClient;
+
+// ------------------------------------------------------------
+// IdP auth (hosted login) — REQUIRE_LOGIN support
+// ------------------------------------------------------------
+
+/** localStorage key holding the IdP access token. */
+export const IDP_ACCESS_TOKEN_KEY: "idp_access_token";
+/** localStorage key holding the IdP refresh token. */
+export const IDP_REFRESH_TOKEN_KEY: "idp_refresh_token";
+/** localStorage key holding the access-token expiry (unix seconds). */
+export const IDP_ACCESS_TOKEN_EXPIRY_KEY: "idp_access_token_expiry";
+
+/** Decode a JWT payload without verifying the signature (null on failure). */
+export function decodeJwt(token: string): Record<string, unknown> | null;
+
+/** True when the token exists and its `exp` claim is in the future. */
+export function isTokenValid(token: string, bufferSeconds?: number): boolean;
+
+export interface CloudgateAuthOptions {
+  /** IdP host, e.g. "https://idp.cloudgate.dev". */
+  idpBaseUrl: string;
+  /** API base for Refresh calls; defaults to idpBaseUrl. */
+  idpApiUrl?: string;
+  /**
+   * Tenancy name. Falls back to the ?idp_tenant / ?tenant query param,
+   * then the current subdomain.
+   */
+  tenancyName?: string;
+  /**
+   * When true (or "true"), `init()` redirects unauthenticated visitors to the
+   * hosted login page — the CURRENT URL is passed as returnUrl at redirect
+   * time, so no return-url configuration is needed.
+   * Wire this to your VITE_REQUIRE_LOGIN env var.
+   */
+  requireLogin?: boolean | string;
+  /** Token storage; defaults to localStorage (memory fallback when absent). */
+  storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
+  /** Custom fetch implementation. */
+  fetch?: typeof fetch;
+}
+
+export interface CloudgateUser {
+  id: string;
+  displayName: string;
+  email?: string;
+  claims: Record<string, unknown>;
+}
+
+export interface CloudgateSession {
+  accessToken: string;
+  refreshToken?: string;
+  claims: Record<string, unknown> | null;
+  user: CloudgateUser | null;
+}
+
+export interface CloudgateAuth {
+  /** True when REQUIRE_LOGIN was configured on. */
+  readonly requireLogin: boolean;
+  /** True when the IdP host + tenancy resolve (login flow usable). */
+  readonly enabled: boolean;
+  /** The resolved tenancy name. */
+  readonly tenancyName: string;
+  /**
+   * Bootstrap the session: consume redirect tokens, restore/refresh the stored
+   * session, or (when requireLogin) redirect to the hosted login page.
+   * Call once before rendering the app.
+   */
+  init(): Promise<CloudgateSession | null>;
+  /** Redirect to the hosted login page (returnUrl defaults to current page). */
+  login(returnUrl?: string): string;
+  /** Build the login URL without navigating. */
+  loginUrl(returnUrl?: string): string;
+  /** Clear the session; optionally redirect back to the login page. */
+  logout(opts?: { redirectToLogin?: boolean }): void;
+  /** Exchange the refresh token for new tokens (null on failure). */
+  refresh(): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number } | null>;
+  isAuthenticated(): boolean;
+  getAccessToken(): string | null;
+  getUser(): CloudgateUser | null;
+  /** `{ Authorization: "Bearer …" }` when authenticated, `{}` otherwise. */
+  authHeader(): Record<string, string>;
+}
+
+/**
+ * Create an IdP auth manager (hosted-login flow).
+ *
+ * @example
+ * // src/services/auth.js
+ * import { createCloudgateAuth } from "@cloudgatedevs/cloudgate-client";
+ *
+ * export const auth = createCloudgateAuth({
+ *   idpBaseUrl: import.meta.env.VITE_IDP_BASE_URL,
+ *   tenancyName: import.meta.env.VITE_IDP_TENANCY_NAME,
+ *   requireLogin: import.meta.env.VITE_REQUIRE_LOGIN,
+ * });
+ *
+ * // src/main.jsx — gate the page load
+ * auth.init().then((session) => {
+ *   if (auth.requireLogin && !session) return; // browser is redirecting to login
+ *   ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ * });
+ */
+export function createCloudgateAuth(options: CloudgateAuthOptions): CloudgateAuth;
 
 export default createCloudgateClient;

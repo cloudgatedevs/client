@@ -98,7 +98,9 @@ function unwrapValue(d) {
  * @param {string} [options.apiSecret] Gateway API secret.
  * @param {number} [options.timeoutMs=30000] Default per-request timeout.
  * @param {typeof fetch} [options.fetch]     Custom fetch (tests, polyfills).
- * @param {Record<string,string>} [options.headers] Extra headers on every request.
+ * @param {Record<string,string> | (() => Record<string,string>)} [options.headers]
+ *        Extra headers on every request — pass a function to compute them per
+ *        request (e.g. `() => auth.authHeader()` to attach the IdP bearer).
  */
 export function createCloudgateClient({
   baseUrl,
@@ -163,9 +165,11 @@ export function createCloudgateClient({
           : JSON.stringify(body)
         : "";
 
+    const baseHeaders =
+      typeof defaultHeaders === "function" ? defaultHeaders() ?? {} : defaultHeaders;
     const reqHeaders = {
       ...(bodyStr ? { "Content-Type": "application/json" } : {}),
-      ...defaultHeaders,
+      ...baseHeaders,
       ...headers,
     };
 
@@ -238,5 +242,14 @@ export function createCloudgateClient({
     delete: (path, opts = {}) => request(path, { ...opts, method: "DELETE" }),
   };
 }
+
+export {
+  createCloudgateAuth,
+  decodeJwt,
+  isTokenValid,
+  IDP_ACCESS_TOKEN_KEY,
+  IDP_REFRESH_TOKEN_KEY,
+  IDP_ACCESS_TOKEN_EXPIRY_KEY,
+} from "./auth.js";
 
 export default createCloudgateClient;
