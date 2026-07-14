@@ -220,4 +220,110 @@ export interface CloudgateAuth {
  */
 export function createCloudgateAuth(options: CloudgateAuthOptions): CloudgateAuth;
 
+
+// ------------------------------------------------------------
+// WebSockets (live workflow events)
+// ------------------------------------------------------------
+
+export type CloudgateWsStatus =
+  | "connecting"
+  | "open"
+  | "closed"
+  | "reconnecting"
+  | "failed";
+
+export interface CloudgateWsMessageMeta {
+  channel: string;
+  filter?: string;
+  key: string;
+}
+
+export interface CloudgateWebSocketsOptions {
+  /**
+   * Gateway base — same value as createCloudgateClient's baseUrl
+   * ("https://acme.cloudgate.dev"), optionally already carrying the
+   * environment segment ("https://acme.cloudgate.dev/sbx"). Pass a FUNCTION
+   * when the base is only known at runtime (e.g. from a QR code); it is
+   * re-read on every (re)connect.
+   */
+  baseUrl: string | (() => string | null | undefined);
+  /** Environment segment ("sbx" | "prod"). Overrides any carried by baseUrl. */
+  environment?: string;
+  /** Basic-auth username — wire to an env var, e.g. VITE_CLOUDGATE_WS_USER. */
+  username?: string;
+  /** Basic-auth password — wire to an env var, e.g. VITE_CLOUDGATE_WS_PASSWORD. */
+  password?: string;
+  /** Abort a CONNECTING socket after this long (default 15000). */
+  connectionTimeoutMs?: number;
+  reconnect?: {
+    /** Default 5. */
+    maxAttempts?: number;
+    /** Default 1000; doubles per attempt. */
+    initialDelayMs?: number;
+    /** Default 30000. */
+    maxDelayMs?: number;
+  };
+  /** Custom implementation (Node < 22, tests). Defaults to globalThis.WebSocket. */
+  WebSocket?: unknown;
+  /** Pass false to silence logging (default console). */
+  logger?: { log?: Function; warn?: Function; error?: Function } | false;
+}
+
+export interface CloudgateWebSockets {
+  /** True when username + password were provided. */
+  readonly hasCredentials: boolean;
+  /**
+   * Subscribe to a channel (e.g. "table-session"). Returns the connection
+   * key for `disconnect`. Reconnects automatically with backoff. Connecting
+   * the same channel + filter twice reuses the socket (handler replaced).
+   */
+  connect(
+    channel: string,
+    opts: {
+      /** Server-side payload filter, e.g. '"Id":31'. */
+      filter?: string;
+      onMessage: (payload: unknown, meta: CloudgateWsMessageMeta) => void;
+      onStatus?: (status: CloudgateWsStatus) => void;
+    }
+  ): string;
+  /** Close one subscription by the key `connect` returned. */
+  disconnect(key: string): void;
+  /** Close every subscription but keep the manager usable. */
+  disconnectAll(): void;
+  /** Close everything and refuse further connects. */
+  dispose(): void;
+}
+
+/**
+ * Create a WebSocket manager for Cloudgate live channels
+ * (wss://{host}/ws/{env}/{channel}). One manager holds one set of Basic
+ * credentials and any number of channel subscriptions.
+ *
+ * @example
+ * import { createCloudgateWebSockets } from "@cloudgatedevs/cloudgate-client";
+ *
+ * const sockets = createCloudgateWebSockets({
+ *   baseUrl: import.meta.env.VITE_CLOUDGATE_API_URL,
+ *   environment: import.meta.env.VITE_ENVIRONMENT,
+ *   username: import.meta.env.VITE_CLOUDGATE_WS_USER,
+ *   password: import.meta.env.VITE_CLOUDGATE_WS_PASSWORD,
+ * });
+ *
+ * const key = sockets.connect("table-session", {
+ *   filter: `"Id":${sessionId}`,
+ *   onMessage: (payload) => refresh(),
+ * });
+ */
+export function createCloudgateWebSockets(
+  options: CloudgateWebSocketsOptions
+): CloudgateWebSockets;
+
+/**
+ * Resolves an HTTP(S) gateway base (optionally ending in /sbx or /prod)
+ * into a WebSocket origin + environment segment.
+ */
+export function parseWebSocketBase(
+  apiBase: string
+): { wsOrigin: string; env: string } | null;
+
 export default createCloudgateClient;

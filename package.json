@@ -1,7 +1,7 @@
 {
   "name": "@cloudgatedevs/cloudgate-client",
-  "version": "0.4.0",
-  "description": "Tiny, dependency-free client for Cloudgate workflow-API gateways with HMAC-SHA512 request signing. Browser + Node 18+.",
+  "version": "0.5.0",
+  "description": "Tiny, dependency-free client for Cloudgate workflow-API gateways with HMAC-SHA512 request signing and live WebSocket channels. Browser + Node 18+.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./index.d.ts",
@@ -18,7 +18,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/client.test.mjs test/auth.test.mjs"
+    "test": "node --test test/client.test.mjs test/auth.test.mjs test/websockets.test.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -30,7 +30,9 @@
     "hmac",
     "sdk",
     "client",
-    "workflow"
+    "workflow",
+    "websocket",
+    "realtime"
   ],
   "repository": {
     "type": "git",

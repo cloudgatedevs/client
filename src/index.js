@@ -267,4 +267,6 @@ export {
   IDP_ACCESS_TOKEN_EXPIRY_KEY,
 } from "./auth.js";
 
+export { createCloudgateWebSockets, parseWebSocketBase } from "./websockets.js";
+
 export default createCloudgateClient;

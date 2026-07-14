@@ -166,6 +166,64 @@ try {
 }
 ```
 
+## WebSockets (live workflow events)
+
+Cloudgate workflows can push to WebSocket channels (`wss://{host}/ws/{env}/{channel}`),
+secured with Basic credentials passed as an `Authorization` query parameter.
+`createCloudgateWebSockets` manages any number of channel subscriptions with one
+set of credentials, reconnecting automatically with exponential backoff.
+
+Set two new env vars in your app (any names you like — the package takes plain
+options; these are the recommended convention):
+
+```bash
+# .env
+VITE_CLOUDGATE_WS_USER=yourUser
+VITE_CLOUDGATE_WS_PASSWORD=yourPassword
+```
+
+```js
+import { createCloudgateWebSockets } from "@cloudgatedevs/cloudgate-client";
+
+export const sockets = createCloudgateWebSockets({
+  baseUrl: import.meta.env.VITE_CLOUDGATE_API_URL,   // https://acme.cloudgate.dev
+  environment: import.meta.env.VITE_ENVIRONMENT,     // sbx | prod
+  username: import.meta.env.VITE_CLOUDGATE_WS_USER,
+  password: import.meta.env.VITE_CLOUDGATE_WS_PASSWORD,
+});
+
+// Multiple channels, same credentials:
+const a = sockets.connect("table-session", {
+  filter: `"Id":${sessionId}`,               // server-side payload filter
+  onMessage: (payload) => refetchSession(),
+});
+const b = sockets.connect("order-items", {
+  filter: `"table_session_id":${sessionId}`,
+  onMessage: (payload) => refetchOrders(),
+  onStatus: (s) => console.log("order-items:", s), // connecting|open|closed|reconnecting|failed
+});
+
+// Later:
+sockets.disconnect(a);   // one subscription
+sockets.disconnectAll(); // all of them (manager stays usable)
+sockets.dispose();       // all of them, permanently
+```
+
+Notes:
+
+- `baseUrl` accepts a **function** when the gateway is only known at runtime
+  (e.g. it arrives via a QR code): `createCloudgateWebSockets({ baseUrl: () => getStoreBase(), ... })`.
+  The function is re-read on every (re)connect, and connects are skipped
+  while it returns `null`.
+- If `baseUrl` already ends in `/sbx` or `/prod`, that environment is used
+  automatically; an explicit `environment` option overrides it.
+- JSON frames are parsed before reaching `onMessage`; non-JSON frames are
+  delivered as raw strings.
+- Connecting the same channel + filter twice reuses the socket and just
+  replaces the handler.
+- In Node < 22 pass a `WebSocket` implementation (e.g. the `ws` package):
+  `createCloudgateWebSockets({ ..., WebSocket: WS })`.
+
 ## Require login (IdP auth)
 
 The package also ships the hosted-login session flow used across Cloudgate
