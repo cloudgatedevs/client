@@ -97,6 +97,7 @@ export function createCloudgateAuth({
   idpApiUrl = "",
   tenancyName = "",
   requireLogin = false,
+  allowTenantOverride = true,
   storage,
   fetch: fetchImpl,
 } = {}) {
@@ -106,6 +107,15 @@ export function createCloudgateAuth({
   const mustLogin = requireLogin === true || String(requireLogin).toLowerCase() === "true";
   const store = storage ?? defaultStorage();
   const doFetch = fetchImpl ?? globalThis.fetch;
+  const listeners = new Set();
+  let refreshPending = null;
+  let generation = 0;
+  const notify = () => {
+    const session = currentSession();
+    for (const listener of listeners) {
+      try { listener(session); } catch { /* Subscribers cannot break authentication. */ }
+    }
+  };
 
   function tenantFromQuery() {
     const w = getWindow();
@@ -125,7 +135,7 @@ export function createCloudgateAuth({
   }
 
   function resolveTenant() {
-    return tenantFromQuery() || explicitTenant || tenantFromSubdomain();
+    return (allowTenantOverride ? tenantFromQuery() : "") || explicitTenant || tenantFromSubdomain();
   }
 
   function getStoredAccessToken() {
@@ -159,7 +169,8 @@ export function createCloudgateAuth({
     }
   }
 
-  function clearSession() {
+  function clearSession({ notifySubscribers = true } = {}) {
+    generation++;
     try {
       store.removeItem(IDP_ACCESS_TOKEN_KEY);
       store.removeItem(IDP_REFRESH_TOKEN_KEY);
@@ -167,6 +178,7 @@ export function createCloudgateAuth({
     } catch {
       /* noop */
     }
+    if (notifySubscribers) notify();
   }
 
   /** The hosted login page for the resolved tenancy. */
@@ -199,23 +211,45 @@ export function createCloudgateAuth({
   }
 
   /** POST {apiUrl}/api/idp/{tenant}/Refresh — returns new tokens or null. */
-  async function refresh() {
+  function refresh() {
+    if (refreshPending) return refreshPending;
+    const revision = generation;
+    const previousRefreshToken = getStoredRefreshToken();
+    const tenant = resolveTenant();
+    const run = async () => {
+      if (revision !== generation || tenant !== resolveTenant()) return null;
+      // Another tab may have rotated the token while this tab waited for its lock.
+      if (previousRefreshToken !== getStoredRefreshToken() && currentSession()) {
+        return { accessToken: getStoredAccessToken(), refreshToken: getStoredRefreshToken() };
+      }
+      return refreshOnce(revision, tenant);
+    };
+    const locks = typeof navigator !== "undefined" ? navigator.locks : null;
+    const pending = Promise.resolve().then(() => locks?.request
+      ? locks.request(`cloudgate-idp-refresh:${apiUrl}:${tenant}`, run)
+      : run()).catch(() => null);
+    refreshPending = pending.finally(() => { refreshPending = null; });
+    return refreshPending;
+  }
+
+  async function refreshOnce(revision, expectedTenant) {
     const tenant = resolveTenant();
     const refreshToken = getStoredRefreshToken();
     if (!apiUrl || !tenant || !refreshToken || !doFetch) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10000);
       const res = await doFetch(
         `${apiUrl}/api/idp/${encodeURIComponent(tenant)}/Refresh`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "omit",
+          redirect: "error",
           body: JSON.stringify({ refreshToken, RefreshToken: refreshToken }),
           signal: controller.signal,
         }
       );
-      clearTimeout(timer);
       if (!res.ok) return null;
       const raw = await res.json();
       const data = raw?.result ?? raw;
@@ -226,10 +260,15 @@ export function createCloudgateAuth({
         refreshToken: data.refreshToken ?? data.RefreshToken ?? refreshToken,
         expiresIn: data.expiresIn ?? data.ExpiresIn ?? 0,
       };
+      // Signing out or switching identities while a request is in flight must win.
+      if (revision !== generation || expectedTenant !== resolveTenant() || refreshToken !== getStoredRefreshToken()) return null;
       storeTokens(tokens);
+      notify();
       return tokens;
     } catch {
       return null;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -239,16 +278,11 @@ export function createCloudgateAuth({
     if (!w) return null;
     const params = new URLSearchParams(w.location.search);
     const accessToken = params.get("access_token");
-    if (!accessToken || !isTokenValid(accessToken)) return null;
+    if (!accessToken) return null;
 
     const refreshToken = params.get("refresh_token") || undefined;
     const expiresInRaw = params.get("expires_in");
     const expiresIn = expiresInRaw != null ? Number(expiresInRaw) : undefined;
-    storeTokens({
-      accessToken,
-      refreshToken,
-      expiresIn: Number.isFinite(expiresIn) ? expiresIn : undefined,
-    });
 
     // Strip the token params from the address bar.
     params.delete("access_token");
@@ -264,6 +298,8 @@ export function createCloudgateAuth({
     } catch {
       /* noop */
     }
+    if (!isTokenValid(accessToken)) return null;
+    setSession({ accessToken, refreshToken, expiresIn: Number.isFinite(expiresIn) ? expiresIn : undefined });
     return { accessToken, refreshToken };
   }
 
@@ -305,8 +341,8 @@ export function createCloudgateAuth({
 
     // Expired (or expiring) access token — try the refresh token once.
     if (!session || isTokenValid(session.accessToken, EXPIRY_BUFFER_SECONDS) === false) {
-      const refreshed = await refresh();
-      if (refreshed) session = currentSession();
+      await refresh();
+      session = currentSession();
     }
 
     if (session) return session;
@@ -321,6 +357,57 @@ export function createCloudgateAuth({
   function logout({ redirectToLogin = true } = {}) {
     clearSession();
     if (redirectToLogin) login();
+  }
+
+  /** Accept tokens from a trusted IdP exchange, including the launcher callback. */
+  function setSession(tokens) {
+    if (!tokens?.accessToken || !isTokenValid(tokens.accessToken)) throw new Error("Invalid IdP session.");
+    // Replace a verified session atomically so consumers retain the current account UI.
+    clearSession({ notifySubscribers: false });
+    storeTokens(tokens);
+    if (getStoredAccessToken() !== tokens.accessToken) {
+      clearSession();
+      throw new Error("Allow browser storage to sign in to your app.");
+    }
+    notify();
+    return currentSession();
+  }
+
+  async function ensureAccessToken(bufferSeconds = EXPIRY_BUFFER_SECONDS) {
+    const token = getStoredAccessToken();
+    if (isTokenValid(token, bufferSeconds)) return token;
+    await refresh();
+    return currentSession()?.accessToken ?? null;
+  }
+
+  /** A caller owns the lifetime. Returns cleanup for timers and cross-tab listeners. */
+  function startSessionMonitor({ intervalMs = 5000 } = {}) {
+    let stopped = false;
+    const check = async () => {
+      if (stopped) return;
+      const token = getStoredAccessToken();
+      if (!token && !getStoredRefreshToken()) return;
+      if (isTokenValid(token, EXPIRY_BUFFER_SECONDS)) return;
+      await refresh();
+      if (!stopped && !currentSession()) clearSession();
+    };
+    const onStorage = event => {
+      if (event.key === null || [IDP_ACCESS_TOKEN_KEY, IDP_REFRESH_TOKEN_KEY, IDP_ACCESS_TOKEN_EXPIRY_KEY].includes(event.key)) {
+        generation++;
+        notify();
+      }
+    };
+    const w = getWindow();
+    const timer = setInterval(check, Math.max(1000, intervalMs));
+    w?.addEventListener?.("focus", check);
+    w?.addEventListener?.("storage", onStorage);
+    check();
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      w?.removeEventListener?.("focus", check);
+      w?.removeEventListener?.("storage", onStorage);
+    };
   }
 
   return {
@@ -339,6 +426,10 @@ export function createCloudgateAuth({
     loginUrl,
     logout,
     refresh,
+    setSession,
+    ensureAccessToken,
+    startSessionMonitor,
+    subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener); },
     /** True when a valid (unexpired) access token is stored. */
     isAuthenticated: () => Boolean(currentSession()),
     /** The stored access token, or null when missing/expired. */

@@ -151,6 +151,8 @@ export interface CloudgateAuthOptions {
    * Wire this to your VITE_REQUIRE_LOGIN env var.
    */
   requireLogin?: boolean | string;
+  /** Disable query/subdomain tenant overrides. The native platform client sets this to false. */
+  allowTenantOverride?: boolean;
   /** Token storage; defaults to localStorage (memory fallback when absent). */
   storage?: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   /** Custom fetch implementation. */
@@ -192,6 +194,10 @@ export interface CloudgateAuth {
   logout(opts?: { redirectToLogin?: boolean }): void;
   /** Exchange the refresh token for new tokens (null on failure). */
   refresh(): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number } | null>;
+  setSession(tokens: { accessToken: string; refreshToken?: string; expiresIn?: number }): CloudgateSession;
+  ensureAccessToken(bufferSeconds?: number): Promise<string | null>;
+  subscribe(listener: (session: CloudgateSession | null) => void): () => void;
+  startSessionMonitor(options?: { intervalMs?: number }): () => void;
   isAuthenticated(): boolean;
   getAccessToken(): string | null;
   getUser(): CloudgateUser | null;
@@ -327,3 +333,5 @@ export function parseWebSocketBase(
 ): { wsOrigin: string; env: string } | null;
 
 export default createCloudgateClient;
+
+export * from './platform.js';

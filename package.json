@@ -1,7 +1,7 @@
 {
   "name": "@cloudgatedevs/cloudgate-client",
-  "version": "0.5.0",
-  "description": "Tiny, dependency-free client for Cloudgate workflow-API gateways with HMAC-SHA512 request signing and live WebSocket channels. Browser + Node 18+.",
+  "version": "0.6.0",
+  "description": "Cloudgate native platform APIs, IdP sessions and optional React back office, with workflow client compatibility.",
   "type": "module",
   "main": "./src/index.js",
   "types": "./index.d.ts",
@@ -9,16 +9,33 @@
     ".": {
       "types": "./index.d.ts",
       "default": "./src/index.js"
-    }
+    },
+    "./platform": {
+      "types": "./platform.d.ts",
+      "default": "./src/platform/index.js"
+    },
+    "./react": {
+      "types": "./react.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./react/styles.css": "./dist/react/styles.css",
+    "./tailwind": "./tailwind.preset.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "src/",
+    "dist/",
     "index.d.ts",
+    "platform.d.ts",
+    "react.d.ts",
+    "tailwind.preset.js",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/client.test.mjs test/auth.test.mjs test/websockets.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build"
   },
   "engines": {
     "node": ">=18"
@@ -46,5 +63,50 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "dependencies": {
+    "@uppy/core": "4.5.3",
+    "@uppy/dashboard": "4.3.3",
+    "@uppy/react": "4.2.3",
+    "@uppy/webcam": "4.1.2",
+    "react-easy-crop": "5.5.7"
+  },
+  "peerDependencies": {
+    "@radix-ui/react-dialog": "^1.1.23",
+    "lucide-react": "^1.41.0",
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0",
+    "react-router-dom": "^6.28.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "react-router-dom": {
+      "optional": true
+    },
+    "lucide-react": {
+      "optional": true
+    },
+    "@radix-ui/react-dialog": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@radix-ui/react-dialog": "1.1.23",
+    "autoprefixer": "10.5.4",
+    "esbuild": "0.21.5",
+    "lucide-react": "1.47.0",
+    "postcss": "8.5.26",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.6",
+    "tailwindcss": "3.4.19"
   }
 }
