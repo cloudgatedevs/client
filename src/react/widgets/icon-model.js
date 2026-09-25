@@ -1,4 +1,4 @@
-const essentials = 'Search House LayoutDashboard Settings SlidersHorizontal User Users Shield Lock KeyRound Mail Bell MessageCircle Calendar Clock Folder FileText Image Upload Download Plus Minus Check X ChevronRight ArrowRight ArrowLeft Ellipsis Pencil Trash2 Copy Save RefreshCw ExternalLink Link Eye EyeOff Menu PanelLeft Heart Star Sparkles CircleHelp Info CircleAlert CircleCheck CircleX ShoppingCart CreditCard Package Database ChartColumn ChartLine Globe Code Terminal Zap Filter List Grid2X2 Sun Moon Smartphone Monitor'.split(' ');
+const essentials = 'Search House LayoutDashboard Settings SlidersHorizontal User Users Shield Lock KeyRound Mail Bell MessageCircle Calendar Clock Folder FileText Image Upload Download Plus Minus Check X ChevronRight ArrowRight ArrowLeft Ellipsis Pencil Trash Copy Save RefreshCw ExternalLink Link Eye EyeOff Menu PanelLeft Heart Star Sparkles CircleHelp Info CircleAlert CircleCheck CircleX ShoppingCart CreditCard Package Database ChartColumn ChartLine Globe Code Terminal Zap Filter List Grid2x2 Sun Moon Smartphone Monitor'.split(' ');
 const essentialRank = new Map(essentials.map((name, index) => [name, index]));
 export const iconCategories = [
   { id: 'essentials', label: 'Essentials', matches: name => essentialRank.has(name) },
@@ -10,6 +10,10 @@ export const iconCategories = [
   { id: 'commerce', label: 'Commerce', matches: name => /^(Shopping|Store|CreditCard|Wallet|Banknote|Coins|Dollar|Euro|Pound|Receipt|Package|Box|Boxes|Truck|Tag|Tags|Ticket|Gift|Percent|BadgeDollar)/.test(name) },
   { id: 'media', label: 'Media & devices', matches: name => /^(Image|Camera|Video|Film|Music|Mic|Headphone|Play|Pause|Skip|Volume|Audio|Tv|Monitor|Smartphone|Tablet|Laptop|Keyboard|Mouse|Printer|Wifi|Bluetooth|Battery|Plug)/.test(name) },
   { id: 'nature', label: 'Nature & weather', matches: name => /^(Sun|Moon|Cloud|Snow|Wind|Rain|Umbrella|Thermometer|Tree|Flower|Leaf|Sprout|Mountain|Waves|Droplet|Flame|Earth|Globe|Bird|Cat|Dog|Fish|Rabbit)/.test(name) },
+  { id: 'design', label: 'Design & shapes', matches: name => /^(Circle|Square|Rectangle|Triangle|Hexagon|Octagon|Pentagon|Diamond|Shapes|Shape|Palette|Paint|Brush|Pipette|Swatch|Blend|Contrast|Crop|Frame|Figma|Framer|Spline|Vector|Component|Layers|Blocks)/.test(name) },
+  { id: 'status', label: 'Actions & status', matches: name => /^(Check|X$|Plus|Minus|Loader|Refresh|Rotate|Undo|Redo|Repeat|Info|Help|Question|Alert|Badge|Ban|Flag|Bookmark|Heart|Star|Sparkles|Zap|Power|Toggle|CircleCheck|CircleX|CircleAlert)/.test(name) },
+  { id: 'places', label: 'Places & travel', matches: name => /^(Building|Landmark|Hospital|School|University|Church|Castle|Factory|Hotel|Warehouse|Door|Fence|Brick|Construction|Car|Bus|Train|Tram|Plane|Ship|Sailboat|Bike|Rocket|Taxi|Luggage|Baggage|Tent|Navigation|MapPin)/.test(name) },
+  { id: 'life', label: 'Food & everyday', matches: name => /^(Apple|Banana|Cherry|Citrus|Grape|Carrot|Salad|Sandwich|Pizza|Hamburger|Beef|Fish|Egg|Croissant|Cake|Cookie|Candy|IceCream|Coffee|Cup|Milk|Martini|Wine|Beer|Bottle|Utensils|Cooking|Chef|Bed|Bath|Sofa|Armchair|Lamp|Shirt|Watch|Umbrella|Scissors|Gamepad|Dice|Trophy|Medal|Award|Dumbbell|HeartPulse|Stethoscope|Pill|Syringe)/.test(name) },
 ];
 const synonyms = [
   [/^(House|Home)/, 'home start'], [/Search/, 'find lookup magnify'], [/Settings|Sliders/, 'preferences configure controls'],

@@ -37,6 +37,25 @@ version. It only returns shipped documentation: no credentials, application data
 filesystem mutation or network access. Protocol: newline-delimited MCP stdio.
 This is separate from the older Cloudweb page-builder cookbook.
 
+## Icon library
+
+**Widget library → Foundations → Icon library** browses the installed Lucide
+collection. Search by component name or keywords (for example, “home”, “email” or
+“delete”), filter categories, and preview size, stroke width and theme accent.
+Select a tile to copy its export name or ready-to-use React code. Results are
+paginated after searching the complete collection and use the page's normal scroll.
+
+`IconLibrary` is also exported from `/react/widgets`. Its optional `initialSearch`,
+`defaultIcon` and `onSelect({name, icon})` props let modules reuse the browser as an
+icon picker. The full registry loads on demand; its contents match the app's
+installed `lucide-react` version. No additional icon package is required.
+
+For normal UI, use named imports from `lucide-react`, then pass the component to
+`Button` or `IconButton` via `icon`. Give icon-only buttons a descriptive `label`.
+Use `aria-hidden="true"` for decorative icons beside text. Inherit `currentColor`
+or the `--accent-text` theme token; keep stroke widths and control sizes consistent.
+The shipped icon catalogue entry and agent guidelines include this pattern.
+
 ## Code display and editing
 
 Use `CodeEditor` for snippets, source previews and code fields. It uses the same

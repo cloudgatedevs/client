@@ -17,7 +17,8 @@
 .cgw-icon-name { max-width: 100%; overflow-wrap: anywhere; font-size: .625rem; line-height: 1.3; text-align: center; }
 .cgw-icon-selected { position: absolute; top: .35rem; right: .35rem; color: rgb(var(--accent-text)); }
 .cgw-icon-pagination { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; padding-top: 1rem; font-size: .6875rem; color: rgb(var(--mist-muted)); }
-.cgw-icon-inspector { position: sticky; top: 1rem; border: 1px solid rgb(var(--ink-700)); border-radius: var(--cgw-radius); padding: var(--cg-card-padding, 1rem); background: rgb(var(--ink-900)); min-width: 0; }
+.cgw-icon-inspector { position: sticky; top: 1rem; border: 1px solid rgb(var(--ink-700)); border-radius: var(--cgw-radius); padding: var(--cg-card-padding, 1rem); background: rgb(var(--ink-900)); min-width: 0; scroll-margin-top: 5rem; }
+.cgw-icon-inspector:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
 .cgw-icon-inspector-head { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
 .cgw-icon-large { display: grid; place-items: center; flex: none; width: 4rem; height: 4rem; border-radius: var(--cgw-radius); border: 1px solid rgb(var(--accent) / .15); background: rgb(var(--accent) / .055); }
 .cgw-icon-inspector-head > div { min-width: 0; }

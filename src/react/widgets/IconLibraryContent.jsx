@@ -15,7 +15,7 @@ export default function IconLibraryContent({ initialSearch = '', defaultIcon = '
   const [page, setPage] = useState(1), [selected, setSelected] = useState(() => Object.hasOwn(icons, defaultIcon) ? defaultIcon : 'Sparkles');
   const [size, setSize] = useState(24), [stroke, setStroke] = useState(2), [tone, setTone] = useState('default');
   const [copyStatus, setCopyStatus] = useState('');
-  const copyRevision = useRef(0), resultsRef = useRef(null);
+  const copyRevision = useRef(0), resultsRef = useRef(null), inspectorRef = useRef(null);
   const matches = useMemo(() => searchIcons(index, search, category), [search, category]);
   const pages = Math.max(1, Math.ceil(matches.length / pageSize));
   const currentPage = Math.min(page, pages), start = (currentPage - 1) * pageSize;
@@ -30,7 +30,15 @@ export default function IconLibraryContent({ initialSearch = '', defaultIcon = '
     try { await navigator.clipboard.writeText(text); if (revision === copyRevision.current) setCopyStatus(message); }
     catch { if (revision === copyRevision.current) setCopyStatus('Open Usage code to select and copy manually.'); }
   }
-  function select(name) { setSelected(name); onSelect?.({name, icon:icons[name]}); }
+  function select(name) {
+    setSelected(name); onSelect?.({name, icon:icons[name]});
+    // On narrow layouts the inspector is above the results, so bring the choice
+    // back into view and put keyboard focus beside the copy/customize controls.
+    if (window.matchMedia('(max-width: 1000px)').matches) {
+      inspectorRef.current?.focus({preventScroll:true});
+      inspectorRef.current?.scrollIntoView({block:'nearest', behavior:'instant'});
+    }
+  }
   function changePage(next) {
     setPage(next);
     resultsRef.current?.focus({preventScroll:true});
@@ -62,7 +70,7 @@ export default function IconLibraryContent({ initialSearch = '', defaultIcon = '
             <Button variant="secondary" size="sm" icon={ChevronRight} aria-label="Next icons" disabled={currentPage === pages} onClick={() => changePage(currentPage + 1)} /></div>
         </div>}
       </div>
-      <aside className="cgw-icon-inspector" aria-label="Selected icon">
+      <aside className="cgw-icon-inspector" aria-label="Selected icon" ref={inspectorRef} tabIndex={-1}>
         <div className="cgw-icon-inspector-head">
           <span className={`cgw-icon-large${tone === 'accent' ? ' cgw-icon-symbol--accent' : ''}`}><SelectedIcon size={size} strokeWidth={stroke} aria-hidden="true" /></span>
           <div><span className="cgw-eyebrow">Selected icon</span><h3 aria-live="polite">{selected}</h3><span className="cgw-muted">{size} × {size} · {stroke}px stroke</span></div>
