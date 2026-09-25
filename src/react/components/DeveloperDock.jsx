@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Terminal, ChevronUp, ChevronDown, LockKeyhole, RefreshCw, X } from 'lucide-react';
+import { Terminal, ChevronUp, ChevronDown, LockKeyhole, RefreshCw, ExternalLink, X } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 import { useAuthContext } from '../auth/index.js';
 import { isDeveloperWorkspaceMessage } from '../../platform/developer-workspace.js';
@@ -69,6 +69,17 @@ export function DeveloperDock() {
     return () => { document.removeEventListener('keydown', keydown); toggle.current?.focus(); };
   }, [open]);
   const show = () => { setOpen(true); if (!launch && status !== 'connecting') void start(); };
+  const openTab = async () => {
+    const destination = window.open('about:blank', '_blank');
+    if (!destination) { setError('Allow popups to open the developer workspace in a new tab.'); return; }
+    destination.opener = null;
+    try {
+      const result = await client.developerWorkspace.open({ returnUrl: window.location.href });
+      const url = new URL(result.frameUrl); const params = new URLSearchParams(url.hash.slice(1));
+      params.set('standalone', '1'); url.hash = params.toString(); destination.location.replace(url.href);
+    } catch (err) { destination.close(); setError(err.message || 'The developer workspace could not open.'); }
+  };
+  if (import.meta.env?.VITE_CLOUDGATE_BUILD_PREVIEW === 'true') return null;
   return <>
     <div className="developer-dock">
       <button ref={toggle} type="button" onClick={() => open ? setOpen(false) : show()} aria-expanded={open} aria-controls="cloudgate-developer-panel">
@@ -86,6 +97,7 @@ export function DeveloperDock() {
               <p id="cloudgate-developer-description">{launch ? `${launch.projectName} · ${launch.appName}` : 'Build and monitor the APIs behind your application.'}</p></div>
             <span className="developer-project-lock" title={launch?.controllerPath ? `Controller: /${launch.controllerPath}` : 'All accessible controllers in this tenant'}><LockKeyhole size={12} />{launch?.controllerId ? `Controller: ${launch.controllerName || launch.controllerPath}` : 'All controllers'}</span>
             {launch && <span className={`developer-env ${launch.environment === 'prod' ? 'is-production' : ''}`}>{launch.environment === 'prod' ? 'Production' : 'Sandbox'}</span>}
+            {launch && <button type="button" className="developer-icon" onClick={openTab} aria-label="Open developer workspace in new tab"><ExternalLink size={16} /></button>}
             {launch && <button type="button" className="developer-icon" onClick={end} disabled={status === 'ending'} aria-label="End developer session"><X size={18} /></button>}
             <button ref={minimize} type="button" className="developer-icon" onClick={() => setOpen(false)} aria-label="Minimize developer workspace"><ChevronDown size={20} /></button>
           </header>
@@ -96,7 +108,7 @@ export function DeveloperDock() {
               <p>Developer mode uses the permissions of your linked Cloudgate account. Manage the link in your profile.</p>
               <div><button className="btn-primary" onClick={start}>Reconnect</button><button className="btn-ghost" onClick={() => { end(); navigate(backofficePath('/profile')); }}>Open my profile</button></div></div>}
             {launch && <iframe ref={frame} title="Cloudgate developer workspace" src={launch.frameUrl}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals" referrerPolicy="no-referrer" />}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />}
           </div>
         </section>
       </>, document.body)}
