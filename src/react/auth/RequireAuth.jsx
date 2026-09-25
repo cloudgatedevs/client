@@ -34,7 +34,7 @@ const RequireAuth = () => {
     );
   }
 
-  if (error) return <div className="grid min-h-screen place-items-center p-6"><section className="card max-w-md space-y-4 p-6" role="alert">
+  if (error) return <div className="cg-connection-screen"><section className="card space-y-4 p-6" role="alert">
     <h1 className="text-lg font-semibold">Could not check your account</h1><p>{error.message}</p>
     <button className="btn-primary" onClick={() => refreshLoginDetails()}>Try again</button>
   </section></div>;

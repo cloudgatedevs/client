@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Terminal, ChevronUp, ChevronDown, LockKeyhole, RefreshCw, ExternalLink, X } from 'lucide-react';
+import { Terminal, ChevronUp, ChevronDown, LockKeyhole, RefreshCw, ExternalLink } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 import { useAuthContext } from '../auth/index.js';
 import { isDeveloperWorkspaceMessage } from '../../platform/developer-workspace.js';
@@ -98,7 +98,6 @@ export function DeveloperDock() {
             <span className="developer-project-lock" title={launch?.controllerPath ? `Controller: /${launch.controllerPath}` : 'All accessible controllers in this tenant'}><LockKeyhole size={12} />{launch?.controllerId ? `Controller: ${launch.controllerName || launch.controllerPath}` : 'All controllers'}</span>
             {launch && <span className={`developer-env ${launch.environment === 'prod' ? 'is-production' : ''}`}>{launch.environment === 'prod' ? 'Production' : 'Sandbox'}</span>}
             {launch && <button type="button" className="developer-icon" onClick={openTab} aria-label="Open developer workspace in new tab"><ExternalLink size={16} /></button>}
-            {launch && <button type="button" className="developer-icon" onClick={end} disabled={status === 'ending'} aria-label="End developer session"><X size={18} /></button>}
             <button ref={minimize} type="button" className="developer-icon" onClick={() => setOpen(false)} aria-label="Minimize developer workspace"><ChevronDown size={20} /></button>
           </header>
           <div className="developer-panel-body">

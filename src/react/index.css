@@ -54,6 +54,21 @@ body {
   background: rgb(var(--ink-950));
 }
 
+.cg-connection-screen {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.cg-connection-screen > .card {
+  width: 100%;
+  max-width: 28rem;
+}
+
 ::selection {
   background: rgba(79, 70, 229, 0.18);
 }
