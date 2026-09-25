@@ -15,12 +15,113 @@ Charts take plain data and series descriptors; formatValue formats ticks, toolti
 
 Use the saved palette's --cgw-success, --cgw-warning, --cgw-danger and --cgw-info for status colours and --cgw-chart-1 through --cgw-chart-6 for chart series. For a scoped appearance preview, import paletteVariables and PALETTE_PRESETS from the platform entry. Preserve the saved theme_custom_palette when applying a built-in palette; do not replace the user's named custom palette or save preview settings automatically.
 
+Pass numeric values and formatValue to MetricCard (or use CountUp on its own) for count-up animation; preformatted ReactNode values remain static. Charts animate on meaningful data changes, not hover or equivalent data. Use loading on cards, metrics and charts, and loadRows or loading on tables instead of building custom spinners. WidgetSkeleton offers card, metric, chart and donut shapes. Animations respect prefers-reduced-motion and can be disabled with animate={false}. Never block wheel events or contain vertical overscroll on tables; page scrolling must continue when the table cannot scroll further.
+
+Use CodeEditor for source previews, snippets and code fields rather than a plain pre/textarea or another editor dependency. It uses CodeMirror with palette-aware syntax colours, line numbers, folding, search and copy. Set language and a descriptive label; readOnly defaults to true. Editing requires readOnly={false}, value and onChange. Never execute source to display it. The editor loads lazily, respects its maxHeight and lets wheel scrolling continue to the page. Tab moves focus out of the editor.
+
+Use Form with named Input, Textarea and Select fields for validated submission. Put constraints directly on the fields: required, type, minLength, maxLength, pattern, min, max and step. Errors appear after blur or submit, then update as the user corrects them. Form onSubmit(data,event) receives native FormData only when valid; it prevents native navigation and focuses the first error. Custom validate(value,formData) rules are synchronous and return an error string or undefined; use formData for cross-field rules. Use error for server validation messages and clear them in your change/reset handler. Use validationMessages to customize built-in wording. Reset buttons clear validation and uncontrolled values; restore controlled state yourself in onReset. Client validation never replaces backend validation. Keep async saves, pending state and server errors in your submission handler.
+
+Use SearchSelect for searchable dropdowns. Pass options for local filtering, or loadOptions({search,limit,signal}) returning an array of {value,label,description?,disabled?}. Forward signal to fetch; scope and search at the API before limiting results. Do not fetch all records or filter a remote result page again. Requests debounce and stale responses are ignored. Keep values unique and nonempty; numeric zero is valid. onChange(value,option) receives the selected ID, not a native event; clearing emits ('',null). Pass selectedOption to label a preselected remote ID. Change reloadKey when tenant/filter context changes or records are edited. Use name and required inside Form to submit and validate the selected ID, not the typed search. Customize debounceMs, minSearchLength and limit for the endpoint. Read the shipped search-select example and map its placeholder API route to the real application endpoint.
+
 For each feature, verify loading, empty, error, disabled/read-only, narrow screen, keyboard, light/dark/system, compact density, custom palettes (including pale primary colours) and reduced motion. UI permission checks improve usability; enforce every read/write on the backend too. The React widget catalogue is distinct from the legacy Cloudweb page-builder cookbook: do not use widgetBuilderConfig or page-builder JSON for React modules. If this installed SDK lacks a needed export, use existing supported components or explain the required SDK upgrade; never invent an API or silently install a new SDK version.`;
 
 const example = (imports, body) =>
   `import { ${imports} } from '${widgetImport}';\n\n${body}`;
 const prop = (name, type, description) => ({ name, type, description });
 export const widgets = [
+  {
+    ...widgetMetadata["icons"],
+    exports: ["IconLibrary"],
+    description: "Browse the installed Lucide icon collection. Search names and keywords, filter categories, preview size and stroke, and copy ready-to-use React code.",
+    props: [
+      prop("initialSearch", "string", "Initial search text. Matches component names, readable names and common keywords; filters the whole collection before pagination."),
+      prop("defaultIcon", "string", "Initial Lucide component name. Defaults to Sparkles; unknown names fall back to Sparkles."),
+      prop("onSelect", "({name,icon}) => void", "Optional callback when a tile is selected. Returns the exact installed export name and the React component, suitable for Button's icon prop."),
+      prop("className", "string", "Additional class for the library container. Inherits appearance tokens; the collection loads on demand."),
+    ],
+    example: `import { Search, Plus, Settings } from 'lucide-react';\n${example("Button, IconButton, IconLibrary", `export default function Example() {
+  return <div className="cgw-stack">
+    <div className="cgw-row">
+      <Search size={20} strokeWidth={2} aria-hidden="true" />
+      <span>Find a project</span>
+      <Button icon={Plus}>New project</Button>
+      <IconButton icon={Settings} label="Project settings" />
+    </div>
+    <IconLibrary initialSearch="arrow" defaultIcon="ArrowRight" />
+  </div>;
+}`)}`,
+  },
+  {
+    ...widgetMetadata["search-select"],
+    exports: ["SearchSelect"],
+    description: "An editable dropdown with local filtering or debounced server search, keyboard selection, loading, retry and form validation.",
+    props: [
+      prop("options", "SearchOption[]", "Local {value,label,description?,disabled?} options. Values are unique non-empty strings or numbers; 0 is supported. Searches labels and descriptions."),
+      prop("loadOptions", "({search,limit,signal}) => Promise<SearchOption[]>", "Remote mode. Filter and limit at the server; return an array in display order. Results are not filtered again locally. Forward the AbortSignal to fetch."),
+      prop("value / defaultValue / onChange", "string | number / (value,option) => void", "A committed option ID, separate from search text. value controls selection; defaultValue initializes uncontrolled state. Clearing emits '' and null."),
+      prop("selectedOption", "SearchOption", "Provide the label for a preselected remote ID before results arrive. Selected labels are retained across searches."),
+      prop("debounceMs / minSearchLength / limit", "number", "Defaults: 300ms, 0 characters, 50 requested remote results. Only searches while open. A limit-sized response prompts users to narrow their search."),
+      prop("reloadKey", "string | number", "Change when the data source, tenant, external filters or permissions change; aborts the previous search and refreshes results."),
+      prop("label / hint / error / placeholder / name", "ReactNode / string", "Accessible field feedback; name submits the selected ID, never the search text."),
+      prop("required / validate / validationMessages", "Shared field validation", "Required means a selected option. Custom validate receives the selected ID as a string and optional FormData."),
+      prop("disabled / readOnly / clearable", "boolean", "Clear is available by default. Disabled/read-only fields cannot change selection."),
+    ],
+    example: `import { useState } from 'react';\n${example("SearchSelect", `// Replace this route and mapping with your application's search API.
+async function searchProjects({ search, limit, signal }) {
+  const params = new URLSearchParams({ search, limit: String(limit) });
+  const response = await fetch('/api/projects/search?' + params, { signal });
+  if (!response.ok) throw new Error('Could not search projects.');
+  const data = await response.json();
+  return data.items.map(project => ({
+    value: project.id,
+    label: project.name,
+    description: project.ownerName,
+  }));
+}
+
+export default function Example() {
+  const [projectId, setProjectId] = useState('');
+  return (
+    <SearchSelect
+      label="Project"
+      name="projectId"
+      value={projectId}
+      onChange={setProjectId}
+      loadOptions={searchProjects}
+      minSearchLength={2}
+      debounceMs={300}
+      limit={20}
+      required
+    />
+  );
+}`)}`,
+  },
+  {
+    ...widgetMetadata["code-editor"],
+    exports: ["CodeEditor"],
+    description: "Syntax-highlighted code with line numbers, folding, search, copy and optional editing. Powered by CodeMirror, with inherited palette colours.",
+    props: [
+      prop("value / onChange", "string / (value:string) => void", "Source text and controlled edit callback. No code is executed."),
+      prop("language", "'jsx' | 'tsx' | 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'python' | 'sql' | 'text'", "Syntax mode. Defaults to jsx."),
+      prop("label", "string", "Accessible editor name. Defaults to Code; give each editor a descriptive name."),
+      prop("readOnly", "boolean", "Defaults to true. Set false and supply onChange for editing. Selection, copy and search remain available in read-only mode."),
+      prop("lineNumbers / lineWrapping / copyable", "boolean", "All default to true. The toolbar lets readers toggle line wrapping."),
+      prop("loading", "boolean", "Show a skeleton while loading source. The editor itself is loaded on demand."),
+      prop("minHeight / maxHeight", "string", "CSS lengths, default 120px / 480px. Grows with source up to maxHeight, then scrolls."),
+    ],
+    example: `import { useState } from 'react';\n${example("CodeEditor", `export default function Example() {
+  const [source, setSource] = useState('{\\n  "enabled": true,\\n  "limit": 25\\n}');
+  return (
+    <CodeEditor
+      label="Project configuration"
+      language="json"
+      value={source}
+      onChange={setSource}
+      readOnly={false}
+    />
+  );
+}`)}`,
+  },
   {
     ...widgetMetadata["data-table"],
     exports: ["DataTable"],
@@ -124,6 +225,7 @@ export const widgets = [
       prop("label", "string", "Accessible chart title."),
       prop("formatValue", "(number) => string", "Axis and value formatter."),
       prop("height", "number", "SVG viewBox height (260 default)."),
+      prop("animate / duration", "boolean / number", "Reveal on load and data changes; true / 650 ms by default. Reduced motion skips animation."),
       prop(
         "loading / showDataTable",
         "boolean",
@@ -147,7 +249,7 @@ export const widgets = [
         "Grouped bars with a zero baseline; missing values are omitted.",
       ),
       prop(
-        "label / formatValue / height / loading / showDataTable",
+        "label / formatValue / height / loading / showDataTable / animate / duration",
         "Same as LineChart",
         "Supports keyboard focus and an accessible data table.",
       ),
@@ -169,6 +271,7 @@ export const widgets = [
         "Positive finite values contribute to the total.",
       ),
       prop("labelKey / valueKey", "string", "Defaults to label / value."),
+      prop("animate / duration", "boolean / number", "Sweep segments and count the total; true / 750 ms by default. Reduced motion skips animation."),
       prop(
         "label / formatValue / loading / showDataTable",
         "string / function / boolean / boolean",
@@ -182,7 +285,7 @@ export const widgets = [
   },
   {
     ...widgetMetadata["metric-card"],
-    exports: ["MetricCard"],
+    exports: ["MetricCard", "CountUp"],
     description:
       "A focused headline number with context, an optional icon and a semantic trend.",
     props: [
@@ -198,6 +301,9 @@ export const widgets = [
       ),
       prop("icon", "React component", "Optional lucide-compatible icon."),
       prop("loading", "boolean", "Display a skeleton instead of the value."),
+      prop("formatValue", "(number) => string", "Pass value as a number to animate currency, percentages or counts. ReactNode/string values stay static."),
+      prop("animate / duration", "boolean / number", "Count from zero on mount and from the current value on updates. True / 700 ms by default; honours reduced motion."),
+      prop("CountUp", "{value:number, formatValue?, animate?, duration?, loading?, className?}", "Standalone animated number. Accessible text always exposes the final formatted value."),
       prop(
         "children",
         "ReactNode",
@@ -206,7 +312,7 @@ export const widgets = [
     ],
     example: example(
       "MetricCard",
-      `export default function Example() {\n  return <MetricCard label="Monthly revenue" value="$24,680" trend="+12.8%" tone="success" description="vs. last month" />;\n}`,
+      `export default function Example() {\n  return <MetricCard label="Monthly revenue" value={24680} formatValue={n => '$' + Math.round(n).toLocaleString()} trend="+12.8%" tone="success" description="vs. last month" />;\n}`,
     ),
   },
   {
@@ -215,6 +321,7 @@ export const widgets = [
     description:
       "A flexible surface with a consistent header, content area and optional footer.",
     props: [
+      prop("loading", "boolean", "Show a shaped card skeleton and withhold stale content/footer while data loads."),
       prop(
         "title / description / action",
         "ReactNode",
@@ -274,7 +381,7 @@ export const widgets = [
     ...widgetMetadata["input"],
     exports: ["Input", "Textarea"],
     description:
-      "Labelled fields with optional leading icons, hints and connected validation messages.",
+      "Labelled fields with built-in validation, custom rules, hints and accessible error messages.",
     props: [
       prop(
         "label / hint / error",
@@ -282,13 +389,50 @@ export const widgets = [
         "Accessible label, helper text or validation error.",
       ),
       prop("icon (Input)", "React component", "Leading icon."),
+      prop("required / type / minLength / maxLength / min / max / step / pattern", "Native constraints", "Checked on blur and submit. After blur, feedback updates while typing. Optional empty values remain valid."),
+      prop("validate", "(value:string, formData?:FormData) => string | undefined", "Synchronous custom rule. Return an error or undefined. formData allows cross-field checks."),
+      prop("validationMessages", "Record<string,string>", "Override required, email, url, invalid, minLength, maxLength, pattern, min, max or step messages."),
       prop(
         "value / onChange / ...inputProps",
         "Native HTML attributes",
         "Native event callback; supports type, required, disabled, autoComplete, min/max etc.",
       ),
     ],
-    example: `import { useState } from 'react';\n${example("Input, Textarea", `export default function Example() {\n  const [name, setName] = useState('');\n  return <div className="cgw-stack"><Input label="Project name" value={name} onChange={e => setName(e.target.value)} hint="Visible to your team." /><Textarea label="Description" placeholder="What are you building?" /></div>;\n}`)}`,
+    example: example("Form, Input, Textarea, Button", `export default function Example() {
+  return (
+    <Form className="cgw-stack" onSubmit={data => console.log(data.get('name'))}>
+      <Input name="name" label="Project name" required minLength={3} maxLength={60} />
+      <Input name="email" label="Email address" type="email" required />
+      <Textarea name="description" label="Description" maxLength={240} />
+      <Button type="submit">Save project</Button>
+    </Form>
+  );
+}`),
+  },
+  {
+    ...widgetMetadata["form"],
+    exports: ["Form"],
+    description: "Validate fields before submission, focus the first error and submit native FormData. Works with controlled and uncontrolled fields.",
+    props: [
+      prop("onSubmit", "(data:FormData, event:FormEvent) => void", "Called only when valid. Native navigation is prevented. Read values with data.get(name), data.getAll(name) or Object.fromEntries(data)."),
+      prop("onReset", "(event:FormEvent) => void", "Clears validation feedback. Native reset restores uncontrolled defaults; reset your own state for controlled fields."),
+      prop("children", "ReactNode", "Use named Input, Textarea and Select fields. Native controls still participate in constraint checks."),
+      prop("...formProps / ref", "Native form attributes", "Class names, accessibility attributes and a forwarded HTMLFormElement ref."),
+    ],
+    example: example("Form, Input, Select, Button", `export default function Example() {
+  return (
+    <Form className="cgw-stack" onSubmit={data => console.log(Object.fromEntries(data))}>
+      <Input name="email" label="Email address" type="email" required />
+      <Input name="confirmEmail" label="Confirm email" type="email" required
+        validate={(value, data) => value === data?.get('email') ? undefined : 'Email addresses must match.'} />
+      <Input name="seats" label="Team size" type="number" required min={1} max={100} defaultValue="5" />
+      <Select name="plan" label="Plan" required placeholder="Choose a plan" defaultValue=""
+        options={[{value: 'starter', label: 'Starter'}, {value: 'team', label: 'Team'}]} />
+      <Button type="submit">Save settings</Button>
+      <Button type="reset" variant="secondary">Reset</Button>
+    </Form>
+  );
+}`),
   },
   {
     ...widgetMetadata["select"],
@@ -296,6 +440,7 @@ export const widgets = [
     description:
       "A styled native select with predictable keyboard and mobile behaviour.",
     props: [
+      prop("required / validate / validationMessages", "boolean / function / object", "Uses the same blur, change and submit validation as Input. Combine required with an empty placeholder option."),
       prop(
         "options",
         "{value:string|number,label:string,disabled?:boolean}[]",
@@ -469,10 +614,11 @@ export const widgets = [
   },
   {
     ...widgetMetadata["skeleton"],
-    exports: ["Skeleton"],
+    exports: ["Skeleton", "WidgetSkeleton"],
     description: "A quiet loading placeholder that respects reduced motion.",
     props: [
       prop("width / height", "CSS length", "Defaults to 100% / 1rem."),
+      prop("WidgetSkeleton", "{variant?, label?, height?, className?}", "Ready-made card, metric, chart or donut geometry with an accessible loading status. Uses the same theme-aware shimmer."),
       prop(
         "className / style",
         "string / CSSProperties",
@@ -480,8 +626,8 @@ export const widgets = [
       ),
     ],
     example: example(
-      "Skeleton",
-      `export default function Example() {\n  return <div className="cgw-stack" role="status" aria-label="Loading project"><Skeleton width="40%" /><Skeleton /><Skeleton width="75%" /></div>;\n}`,
+      "WidgetSkeleton",
+      `export default function Example() {\n  return <WidgetSkeleton variant="chart" height="260px" label="Loading revenue" />;\n}`,
     ),
   },
   {
@@ -490,6 +636,7 @@ export const widgets = [
     description:
       "Determinate progress with an accessible value and optional percentage.",
     props: [
+      prop("animate", "boolean", "Animate percentage changes (300 ms) and the bar width. Defaults to true; honours reduced motion."),
       prop(
         "label / value / max",
         "string / number / number",

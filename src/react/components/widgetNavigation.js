@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   MousePointer2,
   SlidersHorizontal,
+  Shapes,
   Table2,
   TrendingUp,
   WandSparkles,
@@ -14,6 +15,7 @@ import { widgetIndex } from "../../widgets/widget-index.js";
 import { BACKOFFICE_PERMISSIONS as P } from "../../platform/backoffice-permissions.js";
 
 const categoryIcons = {
+  Foundations: Shapes,
   Data: Table2,
   Charts: TrendingUp,
   Cards: Layers,
@@ -51,6 +53,7 @@ export const WIDGET_NAV = {
               : []),
             ...(widget.id === "dialog" ? ["modal"] : []),
             ...(widget.id === "select" ? ["dropdown"] : []),
+            ...(widget.id === "icons" ? ["icons", "symbols", "lucide", "svg"] : []),
           ]),
         ),
     })),

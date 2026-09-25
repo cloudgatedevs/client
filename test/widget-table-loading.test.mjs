@@ -58,6 +58,8 @@ test("remote table aborts superseded requests and ignores a stale result even wh
     view = create(render({ status: "old" }));
   });
   assert.equal(calls.length, 1);
+  assert.equal(view.root.findByProps({ className: 'cgw-table-loading-track' }).props['data-loading'], true);
+  assert.ok(view.root.findAllByProps({ className: 'cgw-spin' }).length > 0);
   await act(async () => view.update(render({ status: "new" })));
   assert.equal(calls[0].query.signal.aborted, true);
   await act(async () =>
@@ -68,6 +70,7 @@ test("remote table aborts superseded requests and ignores a stale result even wh
   );
   assert.match(tableText(view), /New result/);
   assert.doesNotMatch(tableText(view), /Stale result/);
+  assert.equal(view.root.findByProps({ className: 'cgw-table-loading-track' }).props['data-loading'], undefined);
   await act(async () => view.unmount());
   assert.equal(calls[1].query.signal.aborted, true);
 });

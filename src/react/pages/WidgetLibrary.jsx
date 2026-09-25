@@ -16,6 +16,7 @@ import {
   Layers,
   MousePointer2,
   Palette,
+  RotateCcw,
   Search,
   Sparkles,
   TrendingUp,
@@ -29,17 +30,21 @@ import {
   Button,
   Card,
   Checkbox,
+  CodeEditor,
   DataTable,
   Dialog,
   DonutChart,
   EmptyState,
+  Form,
   IconButton,
+  IconLibrary,
   Input,
   LineChart,
   MetricCard,
   Progress,
   Select,
-  Skeleton,
+  SearchSelect,
+  WidgetSkeleton,
   Slider,
   Switch,
   Tabs,
@@ -158,19 +163,81 @@ function CopyButton({ text, label = "Copy code" }) {
   );
 }
 function CodeSample({ code }) {
-  return (
-    <div className="cgw-code">
-      <div>
-        <span>
-          <Code2 size={14} /> React · JSX
-        </span>
-        <CopyButton text={code} />
-      </div>
-      <pre tabIndex={0}>
-        <code>{code}</code>
-      </pre>
+  return <CodeEditor value={code} language="jsx" label="React code example" />;
+}
+function CodeEditorDemo({ state }) {
+  const [code, setCode] = useState('{\n  "name": "Northstar studio",\n  "enabled": true,\n  "members": 24,\n  "tags": ["design", "product"]\n}');
+  const [readOnly, setReadOnly] = useState(false);
+  return <div className="cgw-stack">
+    <Switch label="Read only" checked={readOnly} onChange={setReadOnly} />
+    <CodeEditor label="Project configuration" language="json" value={state === 'empty' ? '' : code}
+      onChange={setCode} readOnly={readOnly || state === 'disabled'} loading={state === 'loading'} />
+  </div>;
+}
+function ValidationDemo({ state, advanced = false }) {
+  const [saved, setSaved] = useState(false);
+  const disabled = state === 'disabled';
+  return <Form className="cgw-demo-form" onChange={() => setSaved(false)} onReset={() => setSaved(false)} onSubmit={() => setSaved(true)}>
+    <Input name="name" label="Project name" defaultValue="Northstar studio" required minLength={3} maxLength={60}
+      disabled={disabled} hint="3–60 characters. Try “admin” to see a custom rule."
+      validate={value => value.trim().toLowerCase() === 'admin' ? 'Choose a project name other than “admin”.' : undefined}
+      error={state === 'error' ? 'This project name is already in use.' : undefined} />
+    <Input name="email" label="Contact email" type="email" required disabled={disabled} placeholder="you@example.com"
+      hint="Validation appears after you leave a field or submit." />
+    {advanced ? <>
+      <Input name="website" label="Website" type="url" disabled={disabled} placeholder="https://example.com" hint="Optional. Include https:// when entering a website." />
+      <Input name="seats" label="Team size" type="number" defaultValue="5" required min={1} max={100} step={1} disabled={disabled} />
+      <Select name="plan" label="Plan" required disabled={disabled} defaultValue="" placeholder="Choose a plan"
+        options={[{value:'starter',label:'Starter'}, {value:'team',label:'Team'}]} />
+    </> : <SearchSelect name="project" label="Search your workspace" placeholder="Search projects…" disabled={disabled}
+      options={projectNames.map((label, index) => ({value:index + 1, label}))} />}
+    <Textarea name="description" label="Description" defaultValue="A shared space to create, collaborate and launch."
+      minLength={10} maxLength={240} hint="Optional. Use 10–240 characters when adding a description." disabled={disabled} />
+    <div className="cgw-row">
+      <Button type="submit" disabled={disabled}>Validate form</Button>
+      <Button type="reset" variant="secondary" disabled={disabled}>Reset</Button>
     </div>
-  );
+    {saved && <Alert tone="success" title="All fields are valid">This example doesn’t save data.</Alert>}
+  </Form>;
+}
+function SearchSelectDemo({ state }) {
+  const [local, setLocal] = useState(''), [remote, setRemote] = useState('');
+  const [remoteOption, setRemoteOption] = useState();
+  const [requests, setRequests] = useState(0), [saved, setSaved] = useState(''), [dialog, setDialog] = useState(false);
+  const localOptions = projectNames.map((label, index) => ({value:index + 1, label, description:index === 6 ? 'Archived project' : 'Workspace project', disabled:index === 6}));
+  async function loadOptions({ search, limit, signal }) {
+    setRequests(count => count + 1);
+    await new Promise((resolve, reject) => {
+      const abort = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
+      const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, 450);
+      if (signal.aborted) abort(); else signal.addEventListener('abort', abort, {once:true});
+    });
+    if (state === 'error') throw new Error('Sample search service unavailable.');
+    return state === 'empty' ? [] : sampleRows.filter(row => `${row.name} ${row.owner}`.toLowerCase().includes(search.toLowerCase())).slice(0, limit)
+      .map(row => ({value:row.id, label:row.name, description:row.owner}));
+  }
+  return <div className="cgw-stack">
+    <div className="cgw-demo-chart-grid">
+      <Card title="Local options" description="Filter by name or description. Use the arrow keys to choose.">
+        <Form className="cgw-stack" onReset={() => {setLocal(''); setSaved('');}} onSubmit={data => setSaved(`Selected project ID: ${data.get('project')}`)}>
+          <SearchSelect name="project" label="Project" value={local} onChange={setLocal} required disabled={state === 'disabled'}
+            options={state === 'empty' ? [] : localOptions} placeholder="Search projects…" />
+          <div className="cgw-row"><Button type="submit" size="sm" disabled={state === 'disabled'}>Use project</Button><Button type="reset" size="sm" variant="secondary">Reset</Button></div>
+          {saved && <p className="cgw-muted" role="status">{saved}</p>}
+        </Form>
+      </Card>
+      <Card title="Server-side search" description="A simulated API filters 137 projects before returning results.">
+        <SearchSelect label="Search the project directory" value={remote} onChange={(id, option) => {setRemote(id); setRemoteOption(option);}}
+          selectedOption={remoteOption} loadOptions={loadOptions} reloadKey={state} limit={10} debounceMs={300}
+          disabled={state === 'disabled'} placeholder="Search projects or owners…" hint="Searches are debounced. The API returns up to 10 matches." />
+        <p className="cgw-muted">{requests} search requests</p>
+      </Card>
+    </div>
+    <Button variant="secondary" onClick={() => setDialog(true)}>Open dialog example</Button>
+    <Dialog open={dialog} onClose={() => setDialog(false)} title="Choose a project" description="Searchable dropdowns also work inside dialogs.">
+      <SearchSelect label="Dialog project" options={localOptions} placeholder="Find a project…" />
+    </Dialog>
+  </div>;
 }
 function TableDemo({ state = "ready" }) {
   const [mode, setMode] = useState("pages"),
@@ -200,7 +267,7 @@ function TableDemo({ state = "ready" }) {
         "The sample service is unavailable. Switch to Ready to try again.",
       );
     const { queryRows } = await import("../widgets/table-model.js");
-    return queryRows(state === "empty" ? [] : data, columns, query);
+    return queryRows(state === "empty" || state === "loading" ? [] : data, columns, query);
   }
   return (
     <div className="cgw-stack">
@@ -322,6 +389,10 @@ function WidgetDemo({ id, state }) {
   const disabled = state === "disabled",
     loading = state === "loading";
   if (id === "data-table") return <TableDemo state={state} />;
+  if (id === "icons") return <IconLibrary />;
+  if (id === "code-editor") return <CodeEditorDemo state={state} />;
+  if (id === "search-select") return <SearchSelectDemo state={state} />;
+  if (id === "input" || id === "form") return <ValidationDemo state={state} advanced={id === 'form'} />;
   if (["line-chart", "bar-chart", "donut-chart"].includes(id)) {
     if (state === "error")
       return (
@@ -357,7 +428,8 @@ function WidgetDemo({ id, state }) {
         <div className="cgw-demo-metrics">
           <MetricCard
             label="Total revenue"
-            value="$24,680"
+            value={24680}
+            formatValue={money}
             trend="+12.8%"
             tone="success"
             description="vs. previous period"
@@ -366,7 +438,7 @@ function WidgetDemo({ id, state }) {
           />
           <MetricCard
             label="Active customers"
-            value="1,842"
+            value={1842}
             trend="+8.2%"
             tone="success"
             description="vs. previous period"
@@ -375,7 +447,8 @@ function WidgetDemo({ id, state }) {
           />
           <MetricCard
             label="Response time"
-            value="128 ms"
+            value={128}
+            formatValue={n => `${Math.round(n)} ms`}
             trend="-18.4%"
             tone="success"
             description="faster than last week"
@@ -388,6 +461,7 @@ function WidgetDemo({ id, state }) {
       return (
         <Card
           title="A home for your next idea"
+          loading={loading}
           description="Bring the whole project together."
           action={<Badge tone="accent">Workspace</Badge>}
           footer={
@@ -452,35 +526,6 @@ function WidgetDemo({ id, state }) {
             <Button size="lg">Large</Button>
             <Button loading>Saving changes</Button>
           </div>
-        </div>
-      );
-    case "input":
-      return (
-        <div className="cgw-demo-form">
-          <Input
-            label="Project name"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            disabled={disabled}
-            error={
-              state === "error"
-                ? "Choose a name with at least 3 characters."
-                : undefined
-            }
-            hint="A name your team will recognise."
-          />
-          <Input
-            label="Search your workspace"
-            icon={Search}
-            placeholder="Search projects…"
-            disabled={disabled}
-          />
-          <Textarea
-            label="Description"
-            defaultValue="A shared space to create, collaborate and launch."
-            hint="Tell your team what this project is about."
-            disabled={disabled}
-          />
         </div>
       );
     case "select":
@@ -691,16 +736,11 @@ function WidgetDemo({ id, state }) {
       );
     case "skeleton":
       return (
-        <div
-          className="cgw-stack cgw-demo-form"
-          role="status"
-          aria-label="Loading workspace"
-        >
-          <Skeleton width="45%" height="1.5rem" />
-          <Skeleton height="8rem" />
-          <Skeleton />
-          <Skeleton width="70%" />
-          <Skeleton width="30%" height="2.5rem" />
+        <div className="cgw-demo-chart-grid">
+          <Card title="Card placeholder"><WidgetSkeleton /></Card>
+          <Card title="Chart placeholder"><WidgetSkeleton variant="chart" height="220px" /></Card>
+          <MetricCard label="Metric placeholder" value={24680} loading />
+          <Card title="Distribution placeholder"><WidgetSkeleton variant="donut" height="180px" /></Card>
         </div>
       );
     case "progress":
@@ -741,7 +781,8 @@ function Overview({ onChoose }) {
           <div className="cgw-hero-orbit" />
           <MetricCard
             label="Monthly revenue"
-            value="$24,680"
+            value={24680}
+            formatValue={money}
             trend="+12.8%"
             tone="success"
             description="vs. last month"
@@ -768,7 +809,8 @@ function Overview({ onChoose }) {
       <div className="cgw-demo-metrics">
         <MetricCard
           label="Total revenue"
-          value="$24,680"
+          value={24680}
+          formatValue={money}
           icon={CreditCard}
           trend="+12.8%"
           tone="success"
@@ -776,7 +818,7 @@ function Overview({ onChoose }) {
         />
         <MetricCard
           label="Customers"
-          value="1,842"
+          value={1842}
           icon={Users}
           trend="+8.2%"
           tone="success"
@@ -784,7 +826,8 @@ function Overview({ onChoose }) {
         />
         <MetricCard
           label="Conversion rate"
-          value="4.28%"
+          value={4.28}
+          formatValue={n => `${n.toFixed(2)}%`}
           icon={MousePointer2}
           trend="+0.6%"
           tone="success"
@@ -856,7 +899,8 @@ export function WidgetLibrary() {
     [state, setState] = useState("ready"),
     [theme, setTheme] = useState("app"),
     [density, setDensity] = useState("app"),
-    [palette, setPalette] = useState("app");
+    [palette, setPalette] = useState("app"),
+    [motionRun, setMotionRun] = useState(0);
   const widget = widgets.find((widget) => widget.id === selected),
     recipe = widgetRecipes.find((recipe) => `recipe:${recipe.id}` === selected);
   useEffect(() => {
@@ -881,16 +925,16 @@ export function WidgetLibrary() {
     theme === "dark" ||
     (theme === "app" && (appearance.theme_mode === 'dark' || (appearance.theme_mode === 'system' && systemDark)));
   const previewStyle = paletteVariables({ ...appearance, ...previewColors }, isDark);
-  const availableStates = [
+  const availableStates = selected === "search-select" ? ["ready", "empty", "error", "disabled"] : selected === "code-editor" ? ["ready", "loading", "empty", "disabled"] : [
     "data-table",
     "line-chart",
     "bar-chart",
     "donut-chart",
   ].includes(selected)
     ? ["ready", "loading", "empty", "error"]
-    : ["input", "select"].includes(selected)
+    : ["input", "select", "form"].includes(selected)
       ? ["ready", "disabled", "error"]
-      : ["button", "metric-card"].includes(selected)
+      : ["button", "metric-card", "card"].includes(selected)
         ? ["ready", "loading", ...(selected === "button" ? ["disabled"] : [])]
         : ["slider", "switch", "tabs"].includes(selected)
           ? ["ready", "disabled"]
@@ -903,7 +947,7 @@ export function WidgetLibrary() {
     return <Navigate to={backofficePath("/widgets")} replace />;
   return (
     <div className="cgw-library">
-      <header className="cgw-library-head">
+      <header className="cgw-library-head" data-detail={!!widget || !!recipe || undefined}>
         <div>
           <div className="cgw-eyebrow">
             <Blocks size={14} /> Cloudgate design system
@@ -974,14 +1018,8 @@ export function WidgetLibrary() {
             {widget && (
               <>
                 <div className="cgw-widget-title">
-                  <span className="cgw-eyebrow">{widget.category}</span>
-                  <h2>{widget.name}</h2>
+                  <div className="cgw-widget-heading-row"><h2>{widget.name}</h2><span className="cgw-widget-category">{widget.category}</span></div>
                   <p>{widget.description}</p>
-                  <div className="cgw-widget-exports">
-                    {widget.exports.map((name) => (
-                      <code key={name}>{name}</code>
-                    ))}
-                  </div>
                 </div>
                 <div className="cgw-widget-toolbar">
                   <Tabs
@@ -994,6 +1032,9 @@ export function WidgetLibrary() {
                       { value: "api", label: "API", icon: BookOpen },
                     ]}
                   />
+                  <div className="cgw-widget-options">
+                  {tab === 'preview' && state === 'ready' && ['metric-card', 'line-chart', 'bar-chart', 'donut-chart', 'progress'].includes(selected) &&
+                    <Button variant="ghost" size="sm" icon={RotateCcw} onClick={() => setMotionRun(run => run + 1)}>Replay animation</Button>}
                   {tab === "preview" && availableStates.length > 1 && (
                     <Select
                       aria-label="Example state"
@@ -1005,17 +1046,18 @@ export function WidgetLibrary() {
                       }))}
                     />
                   )}
+                  </div>
                 </div>
                 {tab === "preview" && (
                   <div className="cgw-widget-preview">
                     <WidgetDemo
-                      key={`${widget.id}`}
+                      key={`${widget.id}-${motionRun}`}
                       id={widget.id}
                       state={state}
                     />
                   </div>
                 )}
-                {tab === "code" && <CodeSample code={widget.example} />}
+                {tab === "code" && <><div className="cgw-widget-exports">{widget.exports.map(name => <code key={name}>{name}</code>)}</div><CodeSample code={widget.example} /></>}
                 {tab === "api" && (
                   <div className="cgw-api-list">
                     {widget.props.map((prop) => (

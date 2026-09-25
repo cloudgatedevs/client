@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { EmptyState, Skeleton } from "./primitives.jsx";
+import { EmptyState, WidgetSkeleton } from "./primitives.jsx";
+import { useAnimatedNumber } from './motion.js';
 import {
   chartDomain,
   chartNumber,
@@ -59,6 +60,8 @@ function CartesianChart({
   height = 260,
   loading = false,
   showDataTable = true,
+  animate = true,
+  duration = 650,
 }) {
   const id = useId().replaceAll(":", ""),
     [hidden, setHidden] = useState([]),
@@ -77,6 +80,9 @@ function CartesianChart({
     return () => observer.disconnect();
   }, [loading, data.length, series.length]);
   const shown = series.filter((item) => !hidden.includes(item.key));
+  const animationKey = useMemo(() => JSON.stringify([loading, hidden, data.map(row =>
+    [row[xKey], ...series.map(item => chartNumber(row[item.key]))])]), [loading, hidden, data, series, xKey]);
+  const progress = useAnimatedNumber(1, { animate: animate && !loading && data.length > 0, duration, resetKey: animationKey });
   const { min, max } = useMemo(() => chartDomain(data, shown), [data, shown]);
   const top = 18,
     left = 64,
@@ -105,8 +111,8 @@ function CartesianChart({
   );
   if (loading)
     return (
-      <div className="cgw-chart" role="status" aria-label={`Loading ${label}`}>
-        <Skeleton height={`${h}px`} />
+      <div className="cgw-chart">
+        <WidgetSkeleton variant="chart" height={`${h}px`} label={`Loading ${label}`} />
       </div>
     );
   if (!data.length || !series.length)
@@ -150,6 +156,9 @@ function CartesianChart({
           expand the data table.
         </desc>
         <defs>
+          <clipPath id={`${id}-reveal`}>
+            <rect x={left - 6} y="0" width={(plotW + 12) * progress} height={h} />
+          </clipPath>
           {series.map((item, index) => (
             <linearGradient
               id={`${id}-fill-${index}`}
@@ -206,7 +215,7 @@ function CartesianChart({
                 : [x(i), y(Number(row[item.key]))],
             );
           return (
-            <g key={item.key} style={{ color: color(index) }}>
+            <g key={item.key} style={{ color: color(index) }} clipPath={type === 'line' ? `url(#${id}-reveal)` : undefined}>
               {type === "line" &&
                 lineSegments(points).map((segment, i) => (
                   <g key={i}>
@@ -246,9 +255,9 @@ function CartesianChart({
                       (seriesIndex - shown.length / 2) * barWidth +
                       1
                     }
-                    y={Math.min(y(value), y(0))}
+                    y={y(0) + (Math.min(y(value), y(0)) - y(0)) * progress}
                     width={Math.max(1, barWidth - 2)}
-                    height={Math.max(1, Math.abs(y(value) - y(0)))}
+                    height={Math.max(1, Math.abs(y(value) - y(0))) * progress}
                     rx={3}
                     fill="currentColor"
                   >
@@ -306,14 +315,16 @@ export function DonutChart({
   formatValue = defaultFormat,
   loading = false,
   showDataTable = true,
+  animate = true,
+  duration = 750,
 }) {
   const [active, setActive] = useState(null),
     { segments, total } = donutSegments(data, valueKey);
+  const animationKey = useMemo(() => JSON.stringify([loading, data.map(row => [row[labelKey], chartNumber(row[valueKey])])]), [loading, data, labelKey, valueKey]);
+  const progress = useAnimatedNumber(1, { animate: animate && !loading && total > 0, duration, resetKey: animationKey });
   if (loading)
     return (
-      <div role="status" aria-label={`Loading ${label}`}>
-        <Skeleton height="16rem" />
-      </div>
+      <WidgetSkeleton variant="donut" height="16rem" label={`Loading ${label}`} />
     );
   if (!total)
     return (
@@ -323,6 +334,7 @@ export function DonutChart({
       />
     );
   const selected = active == null ? null : data[active];
+  const selectedValue = selected ? segments[active].value : total;
   return (
     <div className="cgw-chart">
       <div className="cgw-donut-layout">
@@ -353,7 +365,7 @@ export function DonutChart({
                   fill="none"
                   stroke={color(index)}
                   strokeWidth={active === index ? 29 : 24}
-                  strokeDasharray={`${segment.percent} ${100 - segment.percent}`}
+                  strokeDasharray={`${Math.min(segment.percent, Math.max(0, progress * 100 - segment.offset))} ${100 - Math.min(segment.percent, Math.max(0, progress * 100 - segment.offset))}`}
                   strokeDashoffset={-segment.offset}
                   transform="rotate(-90 110 110)"
                   tabIndex={0}
@@ -371,8 +383,8 @@ export function DonutChart({
                 </circle>
               ),
           )}
-          <text x="110" y="108" textAnchor="middle" className="cgw-donut-value">
-            {formatValue(selected ? segments[active].value : total)}
+          <text x="110" y="108" textAnchor="middle" className="cgw-donut-value" aria-label={formatValue(selectedValue)}>
+            <tspan aria-hidden="true">{formatValue(selected ? selectedValue : total * progress)}</tspan>
           </text>
           <text x="110" y="132" textAnchor="middle" className="cgw-chart-axis">
             {String(selected ? selected[labelKey] : "Total").slice(0, 20)}

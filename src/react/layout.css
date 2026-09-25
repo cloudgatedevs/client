@@ -123,15 +123,15 @@
   max-width: none;
 }
 .cgw-library-head {
-  margin-bottom: var(--cg-section-gap);
+  margin-bottom: min(var(--cg-section-gap), 16px);
 }
 .cgw-library-layout,
 .cgw-demo-metrics {
   gap: var(--cg-section-gap);
 }
 .cgw-library-canvas {
-  padding: var(--cg-card-padding);
-  gap: var(--cg-section-gap);
+  padding: min(var(--cg-card-padding), 16px);
+  gap: min(var(--cg-section-gap), 12px);
 }
 .cgw-library-canvas > * {
   width: 100%;

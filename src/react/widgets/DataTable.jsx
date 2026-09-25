@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Columns3,
+  LoaderCircle,
   RefreshCw,
   Search,
   X,
@@ -295,11 +296,12 @@ export function DataTable({
               label="Refresh records"
               icon={RefreshCw}
               onClick={refresh}
-              disabled={loading}
+              loading={loading}
             />
           )}
         </div>
       </div>
+      <div className="cgw-table-loading-track" data-loading={loading || undefined} aria-hidden="true"><span /></div>
       {selectable && activeIds.length > 0 && (
         <div className="cgw-selection-bar">
           <span>{activeIds.length} selected</span>
@@ -444,7 +446,9 @@ export function DataTable({
                   <tr key={`loading-${index}`} aria-hidden="true">
                     {Array.from({ length: columnCount }, (_, col) => (
                       <td key={col}>
-                        <Skeleton width={col === 0 ? "70%" : "85%"} />
+                        <div className="cgw-table-skeleton-cell" style={{ minHeight: rowActions ? 'var(--cgw-control-height)' : '1.25rem' }}>
+                          <Skeleton width={col === 0 ? "70%" : "85%"} />
+                        </div>
                       </td>
                     ))}
                   </tr>
@@ -499,7 +503,8 @@ export function DataTable({
               }))
             }
           />
-          <span role="status" aria-live="polite">
+          <span className="cgw-table-status" role="status" aria-live="polite">
+            {loading && <LoaderCircle size={14} className="cgw-spin" aria-hidden="true" />}
             {error
               ? "Unable to load records"
               : loading
@@ -517,6 +522,7 @@ export function DataTable({
               setQuery((previous) => ({ ...previous, page: previous.page + 1 }))
             }
             disabled={!canLoadMore || loading || !!error}
+            loading={loading}
           >
             {loading
               ? "Loading…"

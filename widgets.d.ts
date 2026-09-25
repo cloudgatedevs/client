@@ -11,6 +11,14 @@ export type Icon = React.ComponentType<{
   className?: string;
   "aria-hidden"?: boolean | "true" | "false";
 }>;
+export interface IconLibraryProps {
+  initialSearch?: string;
+  defaultIcon?: string;
+  /** Called when a user chooses an icon from the installed Lucide collection. */
+  onSelect?: (selection: { name: string; icon: Icon }) => void;
+  className?: string;
+}
+export function IconLibrary(props: IconLibraryProps): React.JSX.Element;
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "danger";
@@ -36,6 +44,7 @@ export function Card(
     description?: React.ReactNode;
     action?: React.ReactNode;
     footer?: React.ReactNode;
+    loading?: boolean;
   },
 ): React.JSX.Element;
 export function MetricCard(props: {
@@ -46,7 +55,18 @@ export function MetricCard(props: {
   tone?: Tone;
   icon?: Icon;
   loading?: boolean;
+  formatValue?: (value: number) => string;
+  animate?: boolean;
+  duration?: number;
   children?: React.ReactNode;
+  className?: string;
+}): React.JSX.Element;
+export function CountUp(props: {
+  value: number;
+  formatValue?: (value: number) => string;
+  animate?: boolean;
+  duration?: number;
+  loading?: boolean;
   className?: string;
 }): React.JSX.Element;
 export interface FieldProps {
@@ -54,11 +74,63 @@ export interface FieldProps {
   hint?: React.ReactNode;
   error?: React.ReactNode;
   className?: string;
+  /** Synchronous custom rule. Return an error message, or undefined when valid. */
+  validate?: (value: string, formData?: FormData) => string | undefined;
+  validationMessages?: Partial<Record<'required' | 'email' | 'url' | 'invalid' | 'minLength' | 'maxLength' | 'pattern' | 'min' | 'max' | 'step', string>>;
 }
+export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit' | 'noValidate'> {
+  /** Called only after validation passes. Native navigation is prevented. */
+  onSubmit?: (data: FormData, event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+}
+export const Form: React.ForwardRefExoticComponent<FormProps & React.RefAttributes<HTMLFormElement>>;
+export interface CodeEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  language?: 'jsx' | 'tsx' | 'javascript' | 'typescript' | 'json' | 'html' | 'css' | 'python' | 'sql' | 'text';
+  label?: string;
+  /** Defaults to true. Set false and supply onChange for controlled editing. */
+  readOnly?: boolean;
+  lineNumbers?: boolean;
+  lineWrapping?: boolean;
+  copyable?: boolean;
+  loading?: boolean;
+  minHeight?: string;
+  maxHeight?: string;
+  className?: string;
+}
+export function CodeEditor(props: CodeEditorProps): React.JSX.Element;
 export const Input: React.ForwardRefExoticComponent<
   React.InputHTMLAttributes<HTMLInputElement> &
-    FieldProps & { icon?: Icon } & React.RefAttributes<HTMLInputElement>
+    FieldProps & { icon?: Icon; endAdornment?: React.ReactNode } & React.RefAttributes<HTMLInputElement>
 >;
+export interface SearchOption {
+  value: string | number;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+}
+export interface SearchSelectProps extends FieldProps {
+  options?: SearchOption[];
+  loadOptions?: (query: {search: string; limit: number; signal: AbortSignal}) => Promise<SearchOption[]>;
+  value?: string | number | null;
+  defaultValue?: string | number;
+  /** Supplies the label for an existing remote ID before a search returns it. */
+  selectedOption?: SearchOption;
+  onChange?: (value: string | number, option: SearchOption | null) => void;
+  name?: string;
+  id?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  readOnly?: boolean;
+  clearable?: boolean;
+  debounceMs?: number;
+  minSearchLength?: number;
+  limit?: number;
+  reloadKey?: string | number;
+  'aria-label'?: string;
+}
+export const SearchSelect: React.ForwardRefExoticComponent<SearchSelectProps & React.RefAttributes<HTMLInputElement>>;
 export const Textarea: React.ForwardRefExoticComponent<
   React.TextareaHTMLAttributes<HTMLTextAreaElement> &
     FieldProps &
@@ -141,6 +213,13 @@ export function Progress(props: {
   max?: number;
   showValue?: boolean;
   tone?: Tone;
+  animate?: boolean;
+}): React.JSX.Element;
+export function WidgetSkeleton(props: {
+  variant?: 'card' | 'metric' | 'chart' | 'donut';
+  label?: string;
+  height?: React.CSSProperties['height'];
+  className?: string;
 }): React.JSX.Element;
 export function Dialog(props: {
   open: boolean;
@@ -217,6 +296,8 @@ export interface ChartProps {
   height?: number;
   loading?: boolean;
   showDataTable?: boolean;
+  animate?: boolean;
+  duration?: number;
 }
 export function LineChart(props: ChartProps): React.JSX.Element;
 export function BarChart(props: ChartProps): React.JSX.Element;

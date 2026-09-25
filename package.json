@@ -23,7 +23,10 @@
       "types": "./widgets.d.ts",
       "default": "./dist/react/widgets.js"
     },
-    "./widgets/catalog": { "types": "./src/widgets/catalog.d.ts", "default": "./src/widgets/catalog.js" },
+    "./widgets/catalog": {
+      "types": "./src/widgets/catalog.d.ts",
+      "default": "./src/widgets/catalog.js"
+    },
     "./tailwind": "./tailwind.preset.js",
     "./package.json": "./package.json"
   },
@@ -79,6 +82,17 @@
     "**/*.css"
   ],
   "dependencies": {
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/view": "^6.43.13",
+    "@lezer/highlight": "^1.2.4",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@uiw/react-codemirror": "^4.25.12",
     "@uppy/core": "4.5.3",
     "@uppy/dashboard": "4.3.3",
     "@uppy/react": "4.2.3",

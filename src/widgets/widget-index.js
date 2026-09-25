@@ -1,5 +1,6 @@
 // Lightweight navigation metadata. Full docs and examples stay in the lazy catalogue.
 export const widgetIndex = [
+  { id: "icons", name: "Icon library", category: "Foundations" },
   {
     id: "data-table",
     name: "Data table",
@@ -40,9 +41,16 @@ export const widgetIndex = [
     name: "Text fields",
     category: "Forms",
   },
+  { id: "form", name: "Form validation", category: "Forms" },
+  { id: "search-select", name: "Searchable select", category: "Forms" },
   {
     id: "select",
     name: "Select",
+    category: "Forms",
+  },
+  {
+    id: "code-editor",
+    name: "Code editor",
     category: "Forms",
   },
   {

@@ -1,5 +1,7 @@
 import { forwardRef, useId, useRef, useState, useLayoutEffect } from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
+import { useAnimatedNumber } from './motion.js';
+import { useFieldValidation } from './Form.jsx';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -89,10 +91,11 @@ export function Card({
   footer,
   children,
   className,
+  loading = false,
   ...props
 }) {
   return (
-    <section {...props} className={cx("cgw-card", className)}>
+    <section {...props} className={cx("cgw-card", className)} aria-busy={loading || undefined}>
       {(title || description || action) && (
         <header className="cgw-card-head">
           <div>
@@ -102,10 +105,20 @@ export function Card({
           {action}
         </header>
       )}
-      <div className="cgw-card-body">{children}</div>
-      {footer && <footer className="cgw-card-foot">{footer}</footer>}
+      <div className="cgw-card-body">{loading ? <WidgetSkeleton variant="card" /> : children}</div>
+      {!loading && footer && <footer className="cgw-card-foot">{footer}</footer>}
     </section>
   );
+}
+export function CountUp({ value, formatValue, animate = true, duration = 700, loading = false, className }) {
+  const number = Number.isFinite(value) ? value : 0;
+  const displayed = useAnimatedNumber(number, { animate: animate && !loading, duration });
+  const format = formatValue || (n => n.toLocaleString(undefined, { maximumFractionDigits: Number.isInteger(number) ? 0 : 2 }));
+  const final = format(number);
+  return <span className={cx('cgw-count-up', className)} aria-busy={loading || undefined}>
+    <span className="cgw-sr-only">{loading ? 'Loading value' : final}</span>
+    {loading ? <Skeleton width="5ch" height="1em" /> : <span aria-hidden="true">{format(displayed)}</span>}
+  </span>;
 }
 export function MetricCard({
   label,
@@ -115,6 +128,9 @@ export function MetricCard({
   tone = "neutral",
   icon: Icon,
   loading = false,
+  formatValue,
+  animate = true,
+  duration = 700,
   children,
   className,
 }) {
@@ -132,11 +148,11 @@ export function MetricCard({
         )}
       </div>
       {loading ? (
-        <Skeleton width="65%" height="2.25rem" />
+        <WidgetSkeleton variant="metric" label={`Loading ${typeof label === 'string' ? label : 'metric'}`} />
       ) : (
-        <strong className="cgw-metric-value">{value}</strong>
+        <strong className="cgw-metric-value">{typeof value === 'number' ? <CountUp {...{ value, formatValue, animate, duration }} /> : value}</strong>
       )}
-      <div className="cgw-metric-description">
+      {!loading && <div className="cgw-metric-description">
         {trend != null && (
           <Badge tone={tone}>
             {String(trend).startsWith("-") ? (
@@ -148,15 +164,15 @@ export function MetricCard({
           </Badge>
         )}
         {description && <span>{description}</span>}
-      </div>
-      {children}
+      </div>}
+      {!loading && children}
     </section>
   );
 }
-function FieldShell({ id, label, hint, error, children, className }) {
+function FieldShell({ id, label, hint, error, required, children, className }) {
   return (
     <div className={cx("cgw-field", error && "cgw-field--error", className)}>
-      {label && <label htmlFor={id}>{label}</label>}
+      {label && <label htmlFor={id}>{label}{required && <span className="cgw-required" aria-hidden="true"> *</span>}</label>}
       {children}
       {(error || hint) && (
         <p
@@ -180,36 +196,41 @@ const fieldProps = (id, hint, error, props) => ({
       .join(" ") || undefined,
 });
 export const Input = forwardRef(function Input(
-  { label, hint, error, id: suppliedId, className, icon: Icon, ...props },
+  { label, hint, error, validate, validationMessages, id: suppliedId, className, icon: Icon, endAdornment, ...props },
   ref,
 ) {
   const uid = useId(),
     id = suppliedId || uid;
+  const validation = useFieldValidation({ id, error, validate, validationMessages, props }, ref);
+  error = validation.error;
   return (
-    <FieldShell {...{ id, label, hint, error, className }}>
+    <FieldShell {...{ id, label, hint, error, className }} required={props.required}>
       <div className="cgw-input-wrap">
         {Icon && <Icon size={16} aria-hidden="true" />}
         <input
           {...fieldProps(id, hint, error, props)}
-          ref={ref}
+          {...validation.bindings}
           className="cgw-input"
         />
+        {endAdornment && <span className="cgw-input-end">{endAdornment}</span>}
       </div>
     </FieldShell>
   );
 });
 export const Textarea = forwardRef(function Textarea(
-  { label, hint, error, id: suppliedId, className, ...props },
+  { label, hint, error, validate, validationMessages, id: suppliedId, className, ...props },
   ref,
 ) {
   const uid = useId(),
     id = suppliedId || uid;
+  const validation = useFieldValidation({ id, error, validate, validationMessages, props }, ref);
+  error = validation.error;
   return (
-    <FieldShell {...{ id, label, hint, error, className }}>
+    <FieldShell {...{ id, label, hint, error, className }} required={props.required}>
       <textarea
         rows={4}
         {...fieldProps(id, hint, error, props)}
-        ref={ref}
+        {...validation.bindings}
         className="cgw-input"
       />
     </FieldShell>
@@ -220,6 +241,8 @@ export const Select = forwardRef(function Select(
     label,
     hint,
     error,
+    validate,
+    validationMessages,
     id: suppliedId,
     className,
     options = [],
@@ -230,12 +253,14 @@ export const Select = forwardRef(function Select(
 ) {
   const uid = useId(),
     id = suppliedId || uid;
+  const validation = useFieldValidation({ id, error, validate, validationMessages, props }, ref);
+  error = validation.error;
   return (
-    <FieldShell {...{ id, label, hint, error, className }}>
+    <FieldShell {...{ id, label, hint, error, className }} required={props.required}>
       <div className="cgw-select-wrap">
         <select
           {...fieldProps(id, hint, error, props)}
-          ref={ref}
+          {...validation.bindings}
           className="cgw-input"
         >
           {placeholder && <option value="">{placeholder}</option>}
@@ -491,12 +516,24 @@ export function Skeleton({
     />
   );
 }
+/** Ready-made placeholders follow the geometry of the widget they replace. */
+export function WidgetSkeleton({ variant = 'card', label = 'Loading content', height, className }) {
+  return <div className={cx('cgw-widget-skeleton', `cgw-widget-skeleton--${variant}`, className)} role="status" aria-label={label} aria-busy="true" style={{ height }}>
+    {variant === 'metric' ? <><Skeleton width="65%" height="2.25rem" /><Skeleton width="80%" height="1rem" /></> :
+      variant === 'chart' ? <><div className="cgw-skeleton-legend"><Skeleton width="5rem" /><Skeleton width="4rem" /></div>
+        <div className="cgw-skeleton-plot">{[36, 58, 47, 75, 64, 90, 78, 100].map((size, index) => <Skeleton key={index} width="100%" height={`${size}%`} />)}</div>
+        <div className="cgw-skeleton-legend"><Skeleton width="25%" /><Skeleton width="25%" /></div></> :
+      variant === 'donut' ? <div className="cgw-skeleton-donut-layout"><span className="cgw-skeleton cgw-skeleton-ring" /><div>{[1, 2, 3].map(n => <Skeleton key={n} width="100%" />)}</div></div> :
+      <><Skeleton width="45%" height="1.25rem" /><Skeleton height="6rem" /><Skeleton width="85%" /><Skeleton width="60%" /></>}
+  </div>;
+}
 export function Progress({
   value = 0,
   max = 100,
   label,
   showValue = true,
   tone = "accent",
+  animate = true,
 }) {
   const safeMax = Number.isFinite(max) && max > 0 ? max : 100;
   const safeValue = Number.isFinite(value)
@@ -506,7 +543,7 @@ export function Progress({
     <div className={`cgw-progress cgw-tone--${tone}`}>
       <div className="cgw-row cgw-between">
         <span>{label}</span>
-        {showValue && <span>{Math.round((safeValue / safeMax) * 100)}%</span>}
+        {showValue && <CountUp value={(safeValue / safeMax) * 100} formatValue={n => `${Math.round(n)}%`} animate={animate} duration={300} />}
       </div>
       <div
         role="progressbar"
@@ -515,7 +552,7 @@ export function Progress({
         aria-valuemax={safeMax}
         aria-valuenow={safeValue}
       >
-        <span style={{ width: `${(safeValue / safeMax) * 100}%` }} />
+        <span style={{ width: `${(safeValue / safeMax) * 100}%`, transition: animate ? undefined : 'none' }} />
       </div>
     </div>
   );
