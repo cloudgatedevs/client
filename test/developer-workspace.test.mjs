@@ -22,6 +22,21 @@ test('Untrusted or non-developer frame URLs are rejected', async () => {
   }
 });
 
+test('Explicit controller focus is sent and must be confirmed by the server', async () => {
+  let sent;
+  let result = { frameUrl: 'https://hub.test/developer', controllerId: 'controller-id', controllerPath: 'orders' };
+  const api = createDeveloperWorkspaceClient({ projectPath: ' /Orders/ ', resolveAppIdentity: async () => ({ webAppId: 'app' }),
+    request: async (_path, options) => { sent = options.body; return result; } });
+  assert.equal((await api.open({ returnUrl: 'https://app.test' })).controllerId, 'controller-id');
+  assert.equal(sent.projectPath, 'Orders');
+  for (const scope of [{}, { controllerId: 'other', controllerPath: 'admin' }]) {
+    result = { frameUrl: 'https://hub.test/developer', ...scope };
+    await assert.rejects(api.open({ returnUrl: 'https://app.test' }), /did not apply.*focus/);
+  }
+  const invalid = createDeveloperWorkspaceClient({ projectPath: '/', request: () => assert.fail('Must not launch'), resolveAppIdentity: () => assert.fail('Must not resolve') });
+  await assert.rejects(invalid.open({ returnUrl: 'https://app.test' }), /path is invalid/);
+});
+
 test('Frame messages require the exact origin and Window object', () => {
   const frame = {}, other = {};
   const event = { origin: 'https://hub.test', source: frame, data: { source: 'cloudgate-developer', type: 'ready' } };

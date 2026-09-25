@@ -1,4 +1,5 @@
 export const DEFAULT_SETTINGS = Object.freeze({
+  enable_public_website: 'true',
   app_name: 'Admin',
   app_tagline: 'Back office',
   app_description: '',
@@ -27,6 +28,7 @@ export function normalizeSettings(values = {}) {
   for (const key of Object.keys(result)) if (typeof values[key] === 'string') result[key] = values[key];
   if (!['light', 'dark', 'system'].includes(result.theme_mode)) result.theme_mode = 'light';
   if (!['comfortable', 'compact'].includes(result.theme_density)) result.theme_density = 'comfortable';
+  if (!['true', 'false'].includes(result.enable_public_website)) result.enable_public_website = 'true';
   for (const key of ['theme_primary', 'theme_secondary'])
     if (!isHex(result[key])) result[key] = DEFAULT_SETTINGS[key];
   for (const key of ['app_logo_url', 'app_icon_url', 'app_url']) if (!safeUrl(result[key])) result[key] = '';

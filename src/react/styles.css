@@ -9,3 +9,4 @@
 @import './integrations/cloudgate-smtp.css';
 @import './integrations/cloudgate-workflow-logs.css';
 @import './account.css';
+@import './popover.css';

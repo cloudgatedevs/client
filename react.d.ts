@@ -14,27 +14,27 @@ export interface NavigationGroup extends NavigationBase {
 }
 export type NavigationItem = NavigationLink | NavigationGroup;
 export interface AppMetadata { name?: string; description?: string; version?: string; [key: string]: unknown }
-export interface CloudgateContextValue { client: CloudgatePlatform; metadata: AppMetadata; navigation: NavigationItem[]; identity: AppIdentity | null }
-export function CloudgateProvider(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode }): ReactNode;
-export function CloudgateBackoffice(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode; fallback?: string; developerMode?: boolean }): ReactNode;
+export interface CloudgateContextValue { client: CloudgatePlatform; metadata: AppMetadata; navigation: NavigationItem[]; identity: AppIdentity | null; basePath: string; publicWebsite: boolean; backofficePath(path?: string): string }
+export function CloudgateProvider(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode; basePath?: string; publicWebsite?: boolean }): ReactNode;
+export function CloudgateBackoffice(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode; fallback?: string; developerMode?: boolean; basePath?: string; publicHome?: ReactNode }): ReactNode;
 export function useCloudgate(): CloudgateContextValue;
 export const PLATFORM_NAV: NavigationItem[];
 export interface AuthContextValue {
-  loading: boolean; auth?: CloudgateSession;
+  loading: boolean; auth?: CloudgateSession; error?: Error | null;
   currentUser?: { user: { id: string | number; name: string; surname: string; emailAddress: string; userName: string; photoUrl?: string; role?: string | null; isEmailConfirmed?: boolean | null; promptForEmailVerification?: boolean }; tenant: { tenancyName: string } };
   headerUser?: AuthContextValue['currentUser']; logout(redirect?: boolean): void;
   updateUser(values: Pick<IdpProfile, 'name' | 'surname' | 'email'>): Promise<void>; refreshLoginDetails(options?: { silent?: boolean }): Promise<IdpProfile | undefined>;
   updateProfilePicture(file: Blob | null): Promise<void>;
 }
 export const AuthContext: Context<AuthContextValue | null>;
-export function AuthProvider(props: { children?: ReactNode }): ReactNode;
+export function AuthProvider(props: { children?: ReactNode; publicAccess?: boolean; onLogoutRedirect?: () => void }): ReactNode;
 export function useAuthContext(): AuthContextValue;
 export function RequireAuth(): ReactNode;
 export function RequireAdmin(): ReactNode;
 export function Profile(): ReactNode;
 export function CloudgateAccountLink(): ReactNode;
-export function SettingsProvider(props: { children?: ReactNode }): ReactNode;
-export function useSettings(): { settings: AppearanceValues; loading: boolean; error: Error | null; save(values: AppearanceValues): Promise<AppearanceValues>; reload(): void };
+export function SettingsProvider(props: { children?: ReactNode; publicAccess?: boolean }): ReactNode;
+export function useSettings(): { settings: AppearanceValues; allowSelfRegistration: boolean; loading: boolean; error: Error | null; save(values: AppearanceValues): Promise<AppearanceValues>; reload(): void };
 export function NotificationsProvider(props: { children?: ReactNode }): ReactNode;
 export function useNotifications(): { api: CloudgatePlatform['notifications']; unread: number; revision: number; connection: string; refresh(): Promise<void> };
 export function NotificationBell(): ReactNode;

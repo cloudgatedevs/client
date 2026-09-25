@@ -3,7 +3,7 @@ import { useCloudgate } from '../context.jsx';
 import { getProfilePictureSrc } from '../../platform/profile.js';
 import { TwoFactorLogin } from './TwoFactorLogin.jsx';
 export const AuthContext = createContext(null);
-export function AuthProvider({ children }) {
+export function AuthProvider({ children, publicAccess = false, onLogoutRedirect }) {
   const { client } = useCloudgate();
   const [loading, setLoading] = useState(true), [auth, setAuth] = useState(), [currentUser, setCurrentUser] = useState();
   const currentUserRef = useRef(currentUser);
@@ -57,8 +57,10 @@ export function AuthProvider({ children }) {
   }, [client, loadProfile, requestTwoFactor]);
   const logout = useCallback((redirect = true) => {
     client.auth.logout({ redirectToLogin: false });
-    if (redirect && client.auth.enabled) client.login();
-  }, [client]);
+    if (redirect && onLogoutRedirect) onLogoutRedirect();
+    else if (redirect && publicAccess) window.location.assign('/');
+    else if (redirect && client.auth.enabled) client.login(window.location.href);
+  }, [client, publicAccess, onLogoutRedirect]);
   const updateUser = useCallback(async values => applyProfile(await client.profile.update(values)), [client, applyProfile]);
   const updateProfilePicture = useCallback(async file => {
     const userId = currentUserRef.current?.user?.id;
@@ -71,11 +73,11 @@ export function AuthProvider({ children }) {
       } : previous);
     }
   }, [client]);
-  const value = useMemo(() => ({ loading, auth, currentUser, headerUser: currentUser, logout, updateUser, updateProfilePicture, refreshLoginDetails: loadProfile }), [loading, auth, currentUser, logout, updateUser, updateProfilePicture, loadProfile]);
+  const value = useMemo(() => ({ loading, auth, currentUser, error, headerUser: currentUser, logout, updateUser, updateProfilePicture, refreshLoginDetails: loadProfile }), [loading, auth, currentUser, error, logout, updateUser, updateProfilePicture, loadProfile]);
   if (challenge) return <TwoFactorLogin client={client} challenge={challenge}
     onSuccess={tokens => { challengePromise.current?.resolve(tokens); challengePromise.current = null; setChallenge(null); }}
     onCancel={() => { challengePromise.current?.reject(new Error('Sign-in cancelled.')); challengePromise.current = null; setChallenge(null); }} />;
-  if (error) return <div className="grid min-h-screen place-items-center p-6"><section className="card max-w-md space-y-4 p-8 text-center" role="alert">
+  if (error && !publicAccess) return <div className="grid min-h-screen place-items-center p-6"><section className="card max-w-md space-y-4 p-8 text-center" role="alert">
     <h1 className="text-xl font-semibold">Let’s get you signed in</h1><p className="text-sm text-mist-muted">{error.message}</p>
     {auth && <button className="btn-ghost" onClick={loadProfile}>Try again</button>}
     <button className="btn-primary" onClick={() => client.login()}>Sign in</button>

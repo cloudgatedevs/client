@@ -51,6 +51,7 @@ export function createCloudgatePlatform(options = {}) {
   });
   const auth = options.auth ?? createCloudgateAuth({ ...config, idpApiUrl: config.apiUrl, allowTenantOverride: false, storage: options.storage, fetch: options.fetch });
   const request = createIdpClient({ auth, apiUrl: config.apiUrl, fetchImpl: options.fetch, timeoutMs: options.timeoutMs });
+  const publicRequest = createIdpClient({ auth, apiUrl: config.apiUrl, fetchImpl: options.fetch, timeoutMs: options.timeoutMs, anonymous: true });
   const published = options.resolvePublishedApp ?? createPublishedAnalyticsResolver({ fetchImpl: options.fetch });
   const resolveAppIdentity = createAppIdentityResolver({ ...config, resolvePublishedApp: published });
   const profile = createProfileClient({ request });
@@ -61,7 +62,7 @@ export function createCloudgatePlatform(options = {}) {
     accountSecurity: createAccountSecurityClient({ request, auth }),
     users: createUsersClient({ request, resolveAppIdentity }),
     roles: createRolesClient({ request }),
-    appearance: createAppearanceClient({ request, resolveAppIdentity }),
+    appearance: createAppearanceClient({ request, publicRequest, resolveAppIdentity }),
     payments: createPaymentsClient({ request, resolveAppIdentity }),
     files: createFilesClient({ request, resolveAppIdentity, mediaFolder: options.mediaFolder || config.projectPath }),
     smtp: createSmtpClient({ request }),
@@ -71,7 +72,7 @@ export function createCloudgatePlatform(options = {}) {
       return scope.webAppId ? { webAppId: scope.webAppId, isProduction: /^prod/.test(scope.environment) } : null;
     } }),
     accountLink: createAccountLinkClient({ request }),
-    developerWorkspace: createDeveloperWorkspaceClient({ request, resolveAppIdentity }),
+    developerWorkspace: createDeveloperWorkspaceClient({ request, resolveAppIdentity, projectPath: config.projectPath }),
     registration: createRegistrationClient({ request }),
     emailTemplate: createEmailTemplateClient({ request }),
     notificationAdmin: createNotificationAdminClient({ request, resolveAppIdentity }),
@@ -86,6 +87,11 @@ export function createCloudgatePlatform(options = {}) {
     } },
     loginUrl: returnUrl => auth.loginUrl(returnUrl ?? (config.returnUrl || undefined)),
     login: returnUrl => auth.login(returnUrl ?? (config.returnUrl || undefined)),
+    signupUrl: returnUrl => {
+      const login = auth.loginUrl(returnUrl ?? (config.returnUrl || undefined));
+      if (!login) return '';
+      const url = new URL(login); url.pathname = url.pathname.replace(/\/login\/?$/, '/signup'); return url.href;
+    },
     initialize: ({ onTwoFactorRequired } = {}) => initialization ??= (async () => {
       await consumeLauncherLogin({ apiUrl: config.apiUrl, tenancyName: config.tenancyName, webAppId: config.webAppId, auth, fetcher: options.fetch, onTwoFactorRequired });
       return auth.init();

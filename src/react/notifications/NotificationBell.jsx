@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowRight, Bell, RefreshCw, X } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Spinner } from '../components/ui.jsx';
 import { useNotifications } from './NotificationsProvider';
@@ -21,11 +22,13 @@ export function NotificationBell() {
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const trigger = useRef(null);
   const navigating = useRef(false);
+  const restoreFocus = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => { setOpen(false); }, [location.key]);
-  useEffect(() => { if (!open) { setItems([]); setReadError(null); } }, [open]);
+  // Preserve the preview while Radix plays the exit animation.
+  useEffect(() => { if (open) { setItems([]); setReadError(null); } }, [open]);
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
@@ -71,7 +74,10 @@ export function NotificationBell() {
     } finally { reading.current = false; setReadingId(null); }
   }
 
-  return <Dialog.Root open={open} onOpenChange={setOpen} modal={false}>
+  return <Dialog.Root open={open} onOpenChange={value => {
+    if (value) { navigating.current = false; restoreFocus.current = false; }
+    setOpen(value);
+  }} modal={false}>
     <Dialog.Trigger asChild>
       <button ref={trigger} type="button" className="btn-ghost relative p-2" aria-label={`Notifications, ${unread} unread`}>
         <Bell size={19} aria-hidden="true" />
@@ -79,12 +85,19 @@ export function NotificationBell() {
       </button>
     </Dialog.Trigger>
     <Dialog.Portal>
-      <Dialog.Content className="fixed z-50 flex max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-850 text-mist shadow-xl outline-none"
+      <Dialog.Content className="notification-popover fixed z-50 flex max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-850 text-mist shadow-xl outline-none"
+        aria-hidden={!open} inert={open ? undefined : ''}
         style={{ ...position, width: 'min(360px, calc(100vw - 24px))', maxHeight: `min(480px, calc(100dvh - ${position.top + 12}px))` }}
+        onEscapeKeyDown={() => { restoreFocus.current = true; }}
         onCloseAutoFocus={event => {
           if (navigating.current) {
             event.preventDefault(); navigating.current = false;
             document.querySelector('main')?.focus({ preventScroll: true });
+          } else if (restoreFocus.current) {
+            // A quick reopen can reuse Radix's closing content and its outside-click
+            // state. Explicit dismissals must still return focus to the bell.
+            event.preventDefault(); restoreFocus.current = false;
+            trigger.current?.focus({ preventScroll: true });
           }
         }}>
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-ink-700 px-3.5 py-2.5">
@@ -92,7 +105,7 @@ export function NotificationBell() {
             <Dialog.Title className="text-sm font-semibold">Notifications</Dialog.Title>
             <Dialog.Description className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] font-medium text-mist-muted">{unread} unread</Dialog.Description>
           </div>
-          <Dialog.Close asChild><button type="button" className="btn-ghost p-2" aria-label="Close notifications"><X size={16} /></button></Dialog.Close>
+          <Dialog.Close asChild><button type="button" className="btn-ghost p-2" aria-label="Close notifications" onClick={() => { restoreFocus.current = true; }}><X size={16} /></button></Dialog.Close>
         </div>
         {readError && <p role="alert" className="border-b border-ink-700 px-3.5 py-2 text-xs text-red-700 dark:text-red-300">{readError}</p>}
         <div className="min-h-0 overflow-y-auto overscroll-contain" aria-busy={loading}>

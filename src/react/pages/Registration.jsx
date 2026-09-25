@@ -4,10 +4,12 @@ import { useCloudgate } from '../context.jsx';
 import { useAuthContext } from '../auth/index.js';
 import { Badge, ErrorNote, PageHead, Spinner } from '../components/ui.jsx';
 import { Notice } from '../components/forms.jsx';
+import { useSettings } from '../settings/SettingsProvider.jsx';
 
 export function Registration() {
   const { client } = useCloudgate();
   const { refreshLoginDetails } = useAuthContext();
+  const { reload: reloadWebsite } = useSettings();
   const [saved, setSaved] = useState(null), [enabled, setEnabled] = useState(false);
   const [promptEnabled, setPromptEnabled] = useState(false);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
@@ -35,6 +37,7 @@ export function Registration() {
         ...(typeof saved.promptForEmailVerification === 'boolean' ? { promptForEmailVerification: promptEnabled } : {}) }, { signal: request.signal });
       if (!request.signal.aborted) {
         setSaved(value); setEnabled(value.allowSelfRegistration); setPromptEnabled(value.promptForEmailVerification === true);
+        reloadWebsite();
         setNotice(value.promptForEmailVerification !== saved.promptForEmailVerification ? 'User settings saved for this tenant.'
           : `Self-registration ${value.allowSelfRegistration ? 'enabled' : 'disabled'} for this tenant.`);
         await refreshLoginDetails({ silent: true });

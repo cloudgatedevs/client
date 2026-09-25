@@ -3,7 +3,7 @@ import { ExternalLink, RefreshCw, Wallet, CheckCircle2, CircleAlert } from 'luci
 
 import { PageHead, useAsync, Spinner, ErrorNote } from '../components/ui.jsx';
 import { Notice } from '../components/forms.jsx';
-import { Link } from 'react-router-dom';
+import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 
 export function Payments() {
   const { client } = useCloudgate();

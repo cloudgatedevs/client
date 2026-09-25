@@ -7,7 +7,7 @@ import { useAuthContext } from '../auth/index.js';
 import { isDeveloperWorkspaceMessage } from '../../platform/developer-workspace.js';
 
 export function DeveloperDock() {
-  const { client } = useCloudgate();
+  const { client, backofficePath } = useCloudgate();
   const { currentUser } = useAuthContext();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false), [launch, setLaunch] = useState(null);
@@ -84,7 +84,7 @@ export function DeveloperDock() {
           <header className="developer-panel-header">
             <div><h2 id="cloudgate-developer-title"><Terminal size={17} />Developer workspace</h2>
               <p id="cloudgate-developer-description">{launch ? `${launch.projectName} · ${launch.appName}` : 'Build and monitor the APIs behind your application.'}</p></div>
-            <span className="developer-project-lock"><LockKeyhole size={12} />Project locked</span>
+            <span className="developer-project-lock" title={launch?.controllerPath ? `Controller: /${launch.controllerPath}` : 'All accessible controllers in this tenant'}><LockKeyhole size={12} />{launch?.controllerId ? `Controller: ${launch.controllerName || launch.controllerPath}` : 'All controllers'}</span>
             {launch && <span className={`developer-env ${launch.environment === 'prod' ? 'is-production' : ''}`}>{launch.environment === 'prod' ? 'Production' : 'Sandbox'}</span>}
             {launch && <button type="button" className="developer-icon" onClick={end} disabled={status === 'ending'} aria-label="End developer session"><X size={18} /></button>}
             <button ref={minimize} type="button" className="developer-icon" onClick={() => setOpen(false)} aria-label="Minimize developer workspace"><ChevronDown size={20} /></button>
@@ -94,7 +94,7 @@ export function DeveloperDock() {
             {status === 'ending' && <div className="developer-connecting" role="status">Ending developer session…</div>}
             {error && <div className="developer-recovery"><Terminal size={28} /><h2>Developer access</h2><p role="alert">{error}</p>
               <p>Developer mode uses the permissions of your linked Cloudgate account. Manage the link in your profile.</p>
-              <div><button className="btn-primary" onClick={start}>Reconnect</button><button className="btn-ghost" onClick={() => { end(); navigate('/profile'); }}>Open my profile</button></div></div>}
+              <div><button className="btn-primary" onClick={start}>Reconnect</button><button className="btn-ghost" onClick={() => { end(); navigate(backofficePath('/profile')); }}>Open my profile</button></div></div>}
             {launch && <iframe ref={frame} title="Cloudgate developer workspace" src={launch.frameUrl}
               sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals" referrerPolicy="no-referrer" />}
           </div>

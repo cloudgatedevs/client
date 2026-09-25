@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import { Plus, RefreshCw } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 import { Badge, ErrorNote, PageHead, Pager, Spinner, Table, fmtDate } from '../components/ui.jsx';

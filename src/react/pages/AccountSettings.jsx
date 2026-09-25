@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import { Check, Copy, Mail, RefreshCw, ShieldCheck, Smartphone } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 

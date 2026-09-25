@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import { ArrowUpRight, FlaskConical, RefreshCw } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 import { ErrorNote, PageHead, Spinner, useAsync } from '../components/ui.jsx';

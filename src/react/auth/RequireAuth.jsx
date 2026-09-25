@@ -8,14 +8,14 @@ const RequireAuth = () => {
   const { client } = useCloudgate();
   const cloudgateAuth = client.auth;
   const redirectToLogin = client.login;
-  const { auth, loading } = useAuthContext();
+  const { auth, loading, currentUser, error, refreshLoginDetails } = useAuthContext();
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
     if (loading) return;
     if (!auth?.accessToken && cloudgateAuth.enabled) {
       setRedirecting(true);
-      redirectToLogin();
+      redirectToLogin(window.location.href);
     }
   }, [loading, auth?.accessToken]);
 
@@ -33,6 +33,12 @@ const RequireAuth = () => {
       </div>
     );
   }
+
+  if (error) return <div className="grid min-h-screen place-items-center p-6"><section className="card max-w-md space-y-4 p-6" role="alert">
+    <h1 className="text-lg font-semibold">Could not check your account</h1><p>{error.message}</p>
+    <button className="btn-primary" onClick={() => refreshLoginDetails()}>Try again</button>
+  </section></div>;
+  if (!currentUser) return <ScreenLoader />;
 
   return <Outlet />;
 };

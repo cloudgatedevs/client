@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, normalizeSettings, rgb, foreground, accentText } from
 import cloudgateIcon from '../assets/cloudgate-icon.svg';
 
 const SettingsContext = createContext(null);
-export function SettingsProvider({ children }) {
+export function SettingsProvider({ children, publicAccess = false }) {
   const { client } = useCloudgate();
   const settingsApi = client.appearance;
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -13,16 +13,17 @@ export function SettingsProvider({ children }) {
   const [error, setError] = useState(null);
   const [revision, setRevision] = useState(0);
   const [savedRevision, setSavedRevision] = useState(null);
+  const [allowSelfRegistration, setAllowSelfRegistration] = useState(false);
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
-    settingsApi
-      .get()
+    (publicAccess ? settingsApi.getPublic() : settingsApi.get())
       .then((value) => {
         if (active) {
           setSettings(value.values);
           setSavedRevision(value.revision);
+          setAllowSelfRegistration(value.allowSelfRegistration === true);
         }
       })
       .catch((err) => {
@@ -34,7 +35,7 @@ export function SettingsProvider({ children }) {
     return () => {
       active = false;
     };
-  }, [revision]);
+  }, [revision, settingsApi, publicAccess]);
   useEffect(() => {
     const root = document.documentElement;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -81,7 +82,7 @@ export function SettingsProvider({ children }) {
   }, [savedRevision, settingsApi]);
   return (
     <SettingsContext.Provider
-      value={{ settings, loading, error, save, reload: () => setRevision((v) => v + 1) }}
+      value={{ settings, allowSelfRegistration, loading, error, save, reload: () => setRevision((v) => v + 1) }}
     >
       {children}
     </SettingsContext.Provider>

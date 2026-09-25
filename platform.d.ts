@@ -5,7 +5,7 @@ export class CloudgatePlatformError extends Error {
   status: number; code: string; body?: unknown; url?: string;
   constructor(message: string, info?: { status?: number; code?: string; body?: unknown; url?: string });
 }
-export function createIdpClient(options: { auth: CloudgateAuth; apiUrl: string; fetchImpl?: typeof fetch; timeoutMs?: number }): PlatformRequest;
+export function createIdpClient(options: { auth: CloudgateAuth; apiUrl: string; fetchImpl?: typeof fetch; timeoutMs?: number; anonymous?: boolean }): PlatformRequest;
 export const createIdpAdminClient: typeof createIdpClient;
 export interface AppIdentity { webAppId: string; environment: string }
 export interface PublishedApp { webAppId: string; isProduction: boolean }
@@ -29,8 +29,8 @@ export function createProfileClient(options: { request: PlatformRequest }): {
 };
 export interface AccountLink { linked: boolean; available: boolean; userId?: number | null; displayName?: string | null; email?: string | null; linkedAtUtc?: string | null; photoUrl?: string | null; profilePictureId?: string | null }
 export interface AccountLinkTicket { code: string; expiresAt: string; authorizationUrl: string }
-export interface DeveloperWorkspaceLaunch { frameUrl: string; frameOrigin: string; projectName: string; appName: string; environment: 'sbx' | 'prod' }
-export function createDeveloperWorkspaceClient(options: { request: PlatformRequest; resolveAppIdentity: IdentityResolver }): {
+export interface DeveloperWorkspaceLaunch { frameUrl: string; frameOrigin: string; projectName: string; appName: string; environment: 'sbx' | 'prod'; controllerId?: string | null; controllerName?: string | null; controllerPath?: string | null }
+export function createDeveloperWorkspaceClient(options: { request: PlatformRequest; resolveAppIdentity: IdentityResolver; projectPath?: string }): {
   open(input: { returnUrl: string }, options?: PlatformRequestOptions): Promise<DeveloperWorkspaceLaunch>;
 };
 export function isDeveloperWorkspaceMessage(event: MessageEvent, frameWindow: Window | null, frameOrigin: string): boolean;
@@ -55,7 +55,8 @@ export function createAccountLinkClient(options: { request: PlatformRequest }): 
 };
 export type AppearanceValues = Record<string, string>;
 export interface AppearanceSnapshot { values: AppearanceValues; revision: string }
-export function createAppearanceClient(options: { request: PlatformRequest; webAppId?: string; environment?: string; resolveAppIdentity?: IdentityResolver }): {
+export function createAppearanceClient(options: { request: PlatformRequest; publicRequest?: PlatformRequest; webAppId?: string; environment?: string; resolveAppIdentity?: IdentityResolver }): {
+  getPublic(): Promise<AppearanceSnapshot & { allowSelfRegistration: boolean }>;
   get(): Promise<AppearanceSnapshot>; save(values: AppearanceValues, revision: string): Promise<AppearanceSnapshot>; reset(revision: string): Promise<AppearanceSnapshot>;
 };
 export const DEFAULT_SETTINGS: Readonly<AppearanceValues>;
@@ -199,6 +200,6 @@ export interface CloudgatePlatform {
   analytics: ReturnType<typeof createAppAnalyticsClient>; logs: ReturnType<typeof createWorkflowLogsClient>;
   payments: ReturnType<typeof createPaymentsClient>;
   notifications: ReturnType<typeof createNotificationsClient> & { connect(options: Omit<NotificationSocketOptions, 'apiUrl' | 'environment' | 'getAccessToken'>): () => void };
-  initialize(options?: { onTwoFactorRequired?: TwoFactorHandler }): Promise<CloudgateSession | null>; loginUrl(returnUrl?: string): string; login(returnUrl?: string): string;
+  initialize(options?: { onTwoFactorRequired?: TwoFactorHandler }): Promise<CloudgateSession | null>; loginUrl(returnUrl?: string): string; login(returnUrl?: string): string; signupUrl(returnUrl?: string): string;
 }
 export function createCloudgatePlatform(options?: CloudgatePlatformOptions): CloudgatePlatform;

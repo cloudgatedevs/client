@@ -24,6 +24,7 @@ export const PLATFORM_NAV = [{
     { to: '/media', label: 'Media server', icon: Images, keywords: ['files', 'images', 'uploads'] },
     { to: '/appearance', label: 'Branding', icon: PanelTop },
     { to: '/theme', label: 'Theme', icon: Palette },
+    { to: '/settings', label: 'Settings', icon: Settings2, keywords: ['website', 'public', 'home'] },
   ],
 }];
 export const routeTitle = (path, navigation = PLATFORM_NAV) =>

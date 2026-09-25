@@ -1,6 +1,6 @@
 import { useCloudgate } from '../context.jsx';
 import { Suspense, useEffect, useId, useRef, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Menu, X, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuthContext } from '../auth/index.js';
@@ -17,7 +17,7 @@ import { DeveloperDock } from './DeveloperDock.jsx';
 import { EmailVerificationPrompt } from './EmailVerificationPrompt.jsx';
 
 export function Layout({ developerMode = true }) {
-  const { navigation, identity, client } = useCloudgate();
+  const { navigation, identity, client, basePath, backofficePath, publicWebsite } = useCloudgate();
   const { currentUser } = useAuthContext();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -28,7 +28,8 @@ export function Layout({ developerMode = true }) {
   const navigate = useNavigate();
   const { settings } = useSettings();
   const main = useRef(null);
-  const back = backTargetFor(location.pathname);
+  const routePath = location.pathname.slice(basePath.length) || '/';
+  const back = backTargetFor(routePath) ? backofficePath(backTargetFor(routePath)) : null;
   const environment = identity?.environment || '';
   const isProduction = ['prod', 'production'].includes(environment);
   const trail = navigationTrail(location.pathname, navigation);
@@ -54,7 +55,7 @@ export function Layout({ developerMode = true }) {
       <div className="sidebar-footer">
         <PoweredByCloudgate
           onOpen={() => {
-            navigate('/about');
+            navigate(backofficePath('/about'));
             setOpen(false);
           }}
           className="sidebar-powered"
@@ -79,13 +80,13 @@ export function Layout({ developerMode = true }) {
             </button>
             <nav aria-label="Breadcrumb" className="workspace-breadcrumb">
               <span className="breadcrumb-app">{settings.app_name}</span>
-              {(trail.length ? trail : [{ label: routeTitle(location.pathname, navigation) }]).map((item, index, items) => <span key={item.id || item.to || item.label} className="breadcrumb-part">
+              {(trail.length ? trail : [{ label: routeTitle(routePath) }]).map((item, index, items) => <span key={item.id || item.to || item.label} className="breadcrumb-part">
                 <ChevronRight size={12} aria-hidden="true" />
                 <span aria-current={index === items.length - 1 ? 'page' : undefined}>{item.label}</span>
               </span>)}
             </nav>
           </div>
-          <div className="flex items-center gap-3"><NotificationBell /><span className={`environment-pill ${isProduction ? 'is-production' : ''}`}>
+          <div className="flex items-center gap-3">{publicWebsite && settings.enable_public_website === 'true' && <Link to="/" className="btn-ghost btn-sm">View website</Link>}<NotificationBell /><span className={`environment-pill ${isProduction ? 'is-production' : ''}`}>
             <span aria-hidden="true" />{environment ? (isProduction ? 'Production' : 'Sandbox') : 'Connecting…'}
           </span><AccountMenu /></div>
         </header>
@@ -120,7 +121,7 @@ export function Layout({ developerMode = true }) {
             </Dialog.Portal>
           </Dialog.Root>
           <p className="min-w-0 flex-1 truncate px-1 text-base font-semibold">
-            {routeTitle(location.pathname, navigation)}
+            {trail.at(-1)?.label || routeTitle(routePath)}
           </p>
           <NotificationBell />
           <AccountMenu />

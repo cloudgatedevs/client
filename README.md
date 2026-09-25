@@ -88,8 +88,9 @@ It serializes rotating refresh requests, retries a 401 once, omits cookies, refu
 and supports abort/timeout options. Platform clients bind the configured tenant; query parameters
 cannot change it. Published `cg-analytics.json` / injected metadata chooses the web app and environment.
 Only the native `Admin` role opens the back office; server permissions remain authoritative.
-The optional `projectPath` is used for native workflow observability only. No default controller
-is created or invoked. Admin/user/appearance/payment routes never use HMAC secrets.
+The optional `projectPath` scopes native workflow observability and the developer workspace to
+one controller. Leave it empty to browse all accessible controllers. No default controller is
+created or invoked. Admin/user/appearance/payment routes never use HMAC secrets.
 
 ### Payments
 
@@ -559,8 +560,16 @@ an ABP account for the same Cloudgate project in their profile. The SDK owns the
 link recovery and `client.developerWorkspace.open({ returnUrl })` launch API. Pass `developerMode={false}`
 to `CloudgateBackoffice` to omit the bar. No additional SDK package is required.
 
-Cloudgate supplies the actual workflow editor, metrics, databases, WebSockets, schedules, keys,
-releases, tests and logs inside `/developer`. It requires the matching hub and backend update.
+Cloudgate supplies an icon rail for **Build**, **API**, **Databases**, **WebSockets** and **Schedules**
+inside `/developer`. New sessions start on the Build placeholder; API opens API Overview directly.
+The overview links to workflow details where permitted. There are no secondary navigation menus.
+This requires the matching hub and backend update.
+
+Configure `projectPath` (or the template's `VITE_CLOUDGATE_API_PROJECT`) to focus the catalogue and
+controller-owned resources on one controller. The server validates and retains this scope throughout
+the session; invalid or inaccessible controllers fail without falling back to all controllers.
+WebSockets are tenant-shared and labeled accordingly. Tenant-wide test recordings are unavailable
+in a focused session. Controller selection in developer mode does not change your saved Hub selection.
 Launching uses the IdP token to obtain a one-use code. Only the hub frame redeems it for a scoped ABP
 token; the parent app never receives that token. The ABP user's existing permissions apply and the
 server blocks project switching and account administration. Normal backoffice settings keep using
@@ -622,3 +631,18 @@ The header account menu includes Profile, Settings, About and Log out, with the 
 Use `platform.accountSecurity.get()`, `beginSetup()`, `confirmSetup(code)`, `disable(code)` and `regenerateRecoveryCodes(code)` in your own UI. Successful enable/disable responses replace this browser's session; other sessions must sign in again. Recovery codes are returned only when generated and must be saved by the user.
 
 Deploy the matching Cloudgate account-security migration/backend and Hub sign-in changes first. An older server shows an unavailable message; the UI never treats missing status as verified or enabled. Headless launcher integrations can pass `initialize({ onTwoFactorRequired })` and complete the protected challenge using `completeTwoFactorLogin`. The React provider handles this automatically. Setup keys and recovery codes stay in component memory, and the QR image is generated on Cloudgate without an external QR service.
+
+## Public website and back office
+
+Pass `basePath="/backoffice"` and `publicHome={<Home />}` to `CloudgateBackoffice` inside your
+BrowserRouter to serve an anonymous home page at `/` alongside the protected Admin workspace.
+Application routes and navigation remain relative to the back office (for example `/orders`
+opens `/backoffice/orders`). `useCloudgate().backofficePath()` builds links to shared screens.
+Existing integrations that omit these props retain their root-mounted workspace.
+
+The shared Settings screen saves **Enable public website** per web app and environment.
+Public bootstrap reads only appearance and registration policy without sending a bearer token;
+changes still use the existing IdP Admin endpoint with revision checks. Branding resets preserve
+the website setting. The public header can use `useSettings().allowSelfRegistration`,
+`client.signupUrl(returnUrl)`, and the authenticated profile's Admin role. Back-office sign-in
+returns to the requested deep link. Update the server to include `GET /api/idp/{tenant}/website`.

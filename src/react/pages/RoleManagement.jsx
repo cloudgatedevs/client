@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 import { validateRole } from '../../platform/role-management.js';

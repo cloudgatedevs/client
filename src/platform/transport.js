@@ -7,7 +7,7 @@ export class CloudgatePlatformError extends Error {
   }
 }
 
-export function createIdpClient({ auth, apiUrl, fetchImpl = globalThis.fetch, timeoutMs = 20000 }) {
+export function createIdpClient({ auth, apiUrl, fetchImpl = globalThis.fetch, timeoutMs = 20000, anonymous = false }) {
   const base = String(apiUrl || '').trim().replace(/\/+$/, '');
   return async function request(path, { method = 'POST', body, signal, timeoutMs: callTimeout } = {}) {
     signal?.throwIfAborted();
@@ -24,20 +24,21 @@ export function createIdpClient({ auth, apiUrl, fetchImpl = globalThis.fetch, ti
     signal?.addEventListener('abort', abort, { once: true });
     const url = `${base}/api/idp/${encodeURIComponent(auth.tenancyName)}/${path}`;
     try {
-      if (auth.ensureAccessToken) await auth.ensureAccessToken();
-      else if (auth.getAccessToken && !auth.getAccessToken()) await auth.refresh?.();
+      if (!anonymous && auth.ensureAccessToken) await auth.ensureAccessToken();
+      else if (!anonymous && auth.getAccessToken && !auth.getAccessToken()) await auth.refresh?.();
       controller.signal.throwIfAborted();
-      if ((auth.getAccessToken && !auth.getAccessToken()) || !auth.authHeader?.().Authorization)
+      if (!anonymous && ((auth.getAccessToken && !auth.getAccessToken()) || !auth.authHeader?.().Authorization))
         throw new CloudgatePlatformError('Sign in with an active Cloudgate IdP account.', { status: 401, code: 'forbidden' });
       const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
       const run = () => fetchImpl(url, {
         method, signal: controller.signal, credentials: 'omit', redirect: 'error',
-        headers: { Accept: 'application/json', ...(!multipart && body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...auth.authHeader() },
+        headers: { Accept: 'application/json', ...(!multipart && body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(!anonymous ? auth.authHeader() : {}) },
+        ...(anonymous ? { cache: 'no-store' } : {}),
         ...(body !== undefined ? { body: multipart ? body : JSON.stringify(body) } : {}),
       });
-      const sentToken = auth.authHeader().Authorization;
+      const sentToken = anonymous ? undefined : auth.authHeader().Authorization;
       let response = await run();
-      if (response.status === 401) {
+      if (response.status === 401 && !anonymous) {
         const changedToken = auth.authHeader().Authorization;
         const refreshed = changedToken && changedToken !== sentToken ? true : await auth.refresh?.();
         const latestToken = auth.authHeader().Authorization;
