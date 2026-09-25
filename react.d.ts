@@ -55,7 +55,7 @@ export function fmtDate(value: string | number | Date): string;
 export function fmtCurrency(value: number, currency?: string): string;
 export function Field(props: { label: string; id?: string; hint?: string; children?: ReactNode }): ReactNode;
 export function Notice(props: { children?: ReactNode; error?: boolean }): ReactNode;
-export function Modal(props: { open: boolean; title: string; description?: string; onClose?: () => void; returnFocusRef?: RefObject<HTMLElement | null>; onEscapeKeyDown?: (event: KeyboardEvent) => void; children?: ReactNode }): ReactNode;
+export function Modal(props: { open: boolean; title: string; description?: string; onClose?: () => void; onAfterClose?: () => void; returnFocusRef?: RefObject<HTMLElement | null>; onEscapeKeyDown?: (event: KeyboardEvent) => void; children?: ReactNode }): ReactNode;
 export function AppVersion(props: { prefix?: string; title?: string; className?: string }): ReactNode;
 export function PoweredByCloudgate(props: { onOpen?: () => void; href?: string; showVersion?: boolean; className?: string }): ReactNode;
 export function CloudgateAbout(props: { appName?: string; appVersion?: string; description?: string; showTitle?: boolean }): ReactNode;

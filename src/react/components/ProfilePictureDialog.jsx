@@ -34,7 +34,7 @@ function PicturePicker({ onSelect, onError }) {
     hideUploadButton proudlyDisplayPoweredByUppy note="PNG, JPEG, WebP or GIF · Up to 5 MB" /></div> : <Spinner />;
 }
 
-export function ProfilePictureDialog({ onClose, returnFocusRef }) {
+export function ProfilePictureDialog({ open, onClose, returnFocusRef }) {
   const { currentUser, updateProfilePicture } = useAuthContext();
   const [selected, setSelected] = useState(null), [crop, setCrop] = useState({ x: 0, y: 0 }), [zoom, setZoom] = useState(1);
   const [area, setArea] = useState(null), [error, setError] = useState(null), [busy, setBusy] = useState(false);
@@ -59,9 +59,10 @@ export function ProfilePictureDialog({ onClose, returnFocusRef }) {
     } catch (failure) { if (mounted.current) setError(failure); }
     finally { submitting.current = false; if (mounted.current) setBusy(false); }
   };
-  return <Modal open title={confirmRemove ? 'Remove profile picture?' : selected ? 'Adjust profile photo' : 'Change profile picture'}
+  return <Modal open={open} title={confirmRemove ? 'Remove profile picture?' : selected ? 'Adjust profile photo' : 'Change profile picture'}
     description={confirmRemove ? 'Your initials will appear until you add another photo.' : selected ? 'Drag to reposition your photo, then zoom to fit the circle.' : 'Choose a photo or take one with your camera, then crop it before saving.'}
-    onClose={busy ? undefined : onClose} returnFocusRef={returnFocusRef}>
+    onClose={busy ? undefined : onClose} returnFocusRef={returnFocusRef}
+    onAfterClose={() => { setSelected(null); setCrop({ x: 0, y: 0 }); setZoom(1); setArea(null); setError(null); setConfirmRemove(false); }}>
     <ErrorNote error={error} />
     {confirmRemove ? <div className="flex justify-end gap-2">
       <button className="btn-ghost" disabled={busy} onClick={() => { setConfirmRemove(false); setError(null); }}>Cancel</button>

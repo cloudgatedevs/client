@@ -17,6 +17,7 @@ import { DeveloperDock } from './DeveloperDock.jsx';
 import { EmailVerificationPrompt } from './EmailVerificationPrompt.jsx';
 
 export function Layout({ developerMode = true }) {
+  const showDeveloperDock = developerMode && import.meta.env?.VITE_CLOUDGATE_BUILD_PREVIEW !== 'true';
   const { navigation, identity, client, basePath, backofficePath, publicWebsite } = useCloudgate();
   const { currentUser } = useAuthContext();
   const [open, setOpen] = useState(false);
@@ -64,7 +65,7 @@ export function Layout({ developerMode = true }) {
     </>
   );
   return (
-    <div className={`app-shell flex h-[100dvh] w-full overflow-hidden ${developerMode ? 'has-developer-dock' : ''}`}>
+    <div className={`app-shell flex h-[100dvh] w-full overflow-hidden ${showDeveloperDock ? 'has-developer-dock' : ''}`}>
       <a className="skip-link" href="#main-content">Skip to content</a>
       <aside id={sidebarId} aria-label="Sidebar" aria-hidden={preferences.hidden || undefined} ref={element => { if (element) element.inert = preferences.hidden; }}
         data-collapsed={preferences.hidden} className="app-sidebar hidden shrink-0 flex-col lg:flex">
@@ -142,7 +143,7 @@ export function Layout({ developerMode = true }) {
           </div>
         </main>
       </div>
-      {developerMode && <DeveloperDock />}
+      {showDeveloperDock && <DeveloperDock />}
     </div>
   );
 }

@@ -21,7 +21,7 @@ export const Notice = ({ children, error = false }) =>
       <div className="min-w-0">{children}</div>
     </div>
   ) : null;
-export function Modal({ open, title, description, onClose, returnFocusRef, onEscapeKeyDown, children }) {
+export function Modal({ open, title, description, onClose, onAfterClose, returnFocusRef, onEscapeKeyDown, children }) {
   // Callers clear their form model on close. Retain the last committed content
   // just long enough for Radix's exit animation, then release it.
   const [lastContent, setLastContent] = useState(null);
@@ -47,6 +47,7 @@ export function Modal({ open, title, description, onClose, returnFocusRef, onEsc
             setLastContent(null);
             const target = returnFocusRef?.current || returnFocus.current;
             if (target?.isConnected) target.focus();
+            onAfterClose?.();
           }}
           onEscapeKeyDown={(e) => {
             onEscapeKeyDown?.(e);
