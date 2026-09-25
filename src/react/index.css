@@ -20,9 +20,7 @@ body,
   height: 100%;
 }
 
-/* The whole console is scaled from this root size: Tailwind's rem-based type
-   and spacing follow it, so 14px gives the tighter, data-dense feel of a
-   professional back office without touching every component. */
+/* Keep type readable in every layout. Density changes spacing, not the root font size. */
 html {
   font-size: 15px;
   -webkit-text-size-adjust: 100%;

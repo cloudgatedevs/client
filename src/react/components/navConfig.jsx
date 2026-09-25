@@ -1,7 +1,8 @@
 import { Users, ChartNoAxesCombined, Palette, PanelTop, Mail, Images, Activity, Wallet, Bell, MessagesSquare, Settings2 } from 'lucide-react';
 import { navigationTrail } from './navigation.js';
+import { WIDGET_NAV } from './widgetNavigation.js';
 
-export const PLATFORM_NAV = [{
+export const PLATFORM_NAV = [WIDGET_NAV, {
   id: 'cloudgate-administration', label: 'Administration', icon: Settings2, section: 'platform',
   children: [
     { to: '/analytics', label: 'Analytics', icon: ChartNoAxesCombined },

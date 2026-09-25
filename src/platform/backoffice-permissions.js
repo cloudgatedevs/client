@@ -1,6 +1,7 @@
 /** Built-in app permissions. Enforcement also happens on every Cloudgate API request. */
 export const BACKOFFICE_PERMISSIONS = Object.freeze({
   "Access": "backoffice.access",
+  "WidgetsView": "backoffice.widgets.view",
   "DashboardView": "backoffice.dashboard.view",
   "OrdersView": "backoffice.orders.view",
   "AnalyticsView": "backoffice.analytics.view",
@@ -46,6 +47,7 @@ export const BACKOFFICE_PERMISSION_TREE = [
     "key": "backoffice.access",
     "label": "Back office access"
   },
+  { "label": "Widget library", "children": [{ "key": "backoffice.widgets.view", "label": "View widget library" }] },
   {
     "label": "Dashboard",
     "children": [

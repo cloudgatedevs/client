@@ -1,7 +1,7 @@
 import { useCloudgate } from '../context.jsx';
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-import { DEFAULT_SETTINGS, normalizeSettings, rgb, foreground, accentText } from '../../platform/appearance-model.js';
+import { DEFAULT_SETTINGS, normalizeSettings, paletteVariables } from '../../platform/appearance-model.js';
 import cloudgateIcon from '../assets/cloudgate-icon.svg';
 
 const SettingsContext = createContext(null);
@@ -43,16 +43,11 @@ export function SettingsProvider({ children, publicAccess = false }) {
       root.dataset.theme =
         settings.theme_mode === 'system' ? (media.matches ? 'dark' : 'light') : settings.theme_mode;
       root.dataset.density = settings.theme_density;
-      root.style.setProperty('--accent', rgb(settings.theme_primary));
-      root.style.setProperty('--accent-fg', foreground(settings.theme_primary));
-      root.style.setProperty(
-        '--accent-text',
-        accentText(settings.theme_primary, root.dataset.theme === 'dark'),
-      );
-      root.style.setProperty('--secondary', rgb(settings.theme_secondary));
+      const variables = paletteVariables(settings, root.dataset.theme === 'dark');
+      for (const [key, value] of Object.entries(variables)) root.style.setProperty(key, value);
       document
         .querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', root.dataset.theme === 'dark' ? '#0c111c' : '#f5f6f8');
+        ?.setAttribute('content', `rgb(${variables['--ink-950']})`);
     };
     apply();
     media.addEventListener('change', apply);

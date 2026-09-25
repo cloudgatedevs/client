@@ -1,6 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { navigationSections, navigationTrail, filterNavigation } from '../src/react/components/navigation.js';
+import { WIDGET_NAV } from '../src/react/components/widgetNavigation.js';
+import { scopeNavigation } from '../src/react/routing.js';
+import { permissionForBackofficePath } from '../src/react/auth/page-permissions.js';
+import { BACKOFFICE_PERMISSIONS as P } from '../src/platform/backoffice-permissions.js';
+import { widgets } from '../src/widgets/catalog.js';
+
+test('widget sidebar covers the catalogue with scoped links, nested search and active breadcrumbs', () => {
+  const links = WIDGET_NAV.children.flatMap(item => item.children || [item]);
+  for (const widget of widgets) {
+    const item = links.find(item => item.to === `/widgets/${widget.id}`);
+    assert.equal(item?.label, widget.name);
+    assert.equal(item?.permission, P.WidgetsView);
+  }
+  const scoped = scopeNavigation([WIDGET_NAV], '/backoffice');
+  assert.deepEqual(navigationTrail('/backoffice/widgets/line-chart', scoped).map(item => item.label), ['Widget library', 'Charts', 'Line chart']);
+  assert.deepEqual(navigationTrail('/backoffice/widgets', scoped).map(item => item.label), ['Widget library', 'Overview']);
+  assert.equal(navigationTrail('/backoffice/widgets/recipes/dashboard', scoped).at(-1).label, 'Recipes');
+  const found = filterNavigation(scoped, 'widget pagination');
+  assert.equal(found[0].children[0].children[0].to, '/backoffice/widgets/data-table');
+});
+
+test('all widget deep links require the library grant, including recipes and unknown routes', () => {
+  for (const path of ['/widgets', '/widgets/', '/widgets/data-table', '/widgets/recipes/dashboard', '/widgets/unknown'])
+    assert.equal(permissionForBackofficePath(path), P.WidgetsView);
+  assert.equal(permissionForBackofficePath('/widgets-custom'), P.Access);
+  assert.equal(permissionForBackofficePath('/roles/'), P.RolesView);
+});
 
 const menu = [
   { to: '/', label: 'Dashboard' },

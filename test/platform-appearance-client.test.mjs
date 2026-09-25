@@ -1,8 +1,31 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createAppearanceClient } from '../src/platform/appearance.js';
+import { DEFAULT_SETTINGS, normalizeSettings, validateSettings } from '../src/platform/appearance-model.js';
 
 const revision = '11111111-1111-1111-1111-111111111111';
+test('layout presets round-trip through private and public appearance without losing scope or branding', async () => {
+  let stored = { ...DEFAULT_SETTINGS, app_name: 'Atlas' };
+  const client = createAppearanceClient({ webAppId: revision, environment: 'sbx', request: async (url, { body }) => {
+    assert.equal(body.webAppId, revision);
+    assert.equal(body.environment, 'sbx');
+    if (url.endsWith('/update')) stored = { ...stored, ...body.values };
+    return { values: stored, revision };
+  }, publicRequest: async () => ({ values: stored, revision, allowSelfRegistration: true }) });
+  for (const density of ['wide', 'content', 'compact', 'flex']) {
+    const saved = await client.save({ theme_density: density }, revision);
+    assert.equal(saved.values.theme_density, density);
+    assert.equal((await client.getPublic()).values.theme_density, density);
+    assert.equal(saved.values.app_name, 'Atlas');
+    assert.equal(validateSettings(saved.values), null);
+  }
+  stored.theme_density = 'comfortable';
+  assert.equal((await client.get()).values.theme_density, 'content');
+  assert.equal((await client.getPublic()).values.theme_density, 'content');
+  assert.equal(stored.theme_density, 'comfortable', 'reading legacy settings must not write them');
+  assert.equal(normalizeSettings({ theme_density: 'bad' }).theme_density, 'content');
+  assert.match(validateSettings({ ...stored, theme_density: 'bad' }), /Choose a layout/);
+});
 test('native appearance carries app/environment and revision while saving only supplied fields', async () => {
   const calls = [];
   const client = createAppearanceClient({ webAppId: revision, environment: 'PROD', request: async (...args) => {

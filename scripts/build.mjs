@@ -12,7 +12,7 @@ if (!output.startsWith(root + path.sep) || path.basename(output) !== 'react') th
 await rm(output, { force: true, recursive: true });
 await mkdir(output, { recursive: true });
 await build({
-  absWorkingDir: root, entryPoints: { index: path.join(root, 'src/react/index.jsx') }, outdir: output,
+  absWorkingDir: root, entryPoints: { index: path.join(root, 'src/react/index.jsx'), widgets: path.join(root, 'src/react/widgets/index.jsx') }, outdir: output,
   tsconfigRaw: { compilerOptions: {} },
   bundle: true, splitting: true, format: 'esm', jsx: 'automatic', target: 'es2020',
   external: ['react', 'react-dom', 'react-router-dom', 'lucide-react', '@radix-ui/react-dialog'],
@@ -35,7 +35,7 @@ await build({
   } }],
 });
 const integrationStyles = (await readdir(path.join(root, 'src/react/integrations'))).filter(name => name.endsWith('.css')).map(name => `integrations/${name}`);
-const input = (await Promise.all(['index.css', 'theme.css', 'polish.css', 'users.css', 'media.css', 'account.css', 'popover.css', ...integrationStyles].map(name => readFile(path.join(root, 'src/react', name), 'utf8')))).join('\n');
+const input = (await Promise.all(['index.css', 'theme.css', 'polish.css', 'users.css', 'media.css', 'account.css', 'popover.css', 'widgets/widgets.css', 'widgets/library.css', ...integrationStyles, 'layout.css', 'palettes.css'].map(name => readFile(path.join(root, 'src/react', name), 'utf8')))).join('\n');
 const css = await postcss([tailwind({ ...preset, content: [path.join(root, 'src/**/*.{js,jsx}').replaceAll('\\', '/')] }), autoprefixer()]).process(input, { from: undefined });
 await writeFile(path.join(output, 'styles.css'), css.css);
 console.log('Built React entry, lazy feature chunks and shared CSS.');

@@ -28,6 +28,7 @@ const Registration = page(() => import('./pages/Registration.jsx'), 'Registratio
 const EmailTemplate = page(() => import('./pages/EmailTemplate.jsx'), 'EmailTemplate');
 const AppNotifications = page(() => import('./pages/AppNotifications.jsx'), 'AppNotifications');
 const WebsiteSettings = page(() => import('./pages/WebsiteSettings.jsx'), 'WebsiteSettings');
+const WidgetLibrary = page(() => import('./pages/WidgetLibrary.jsx'), 'WidgetLibrary');
 function Workspace({ sharedSettings }) {
   const content = <NotificationsProvider><Suspense fallback={<ScreenLoader />}><Outlet /></Suspense></NotificationsProvider>;
   return sharedSettings ? content : <SettingsProvider>{content}</SettingsProvider>;
@@ -60,6 +61,7 @@ export function CloudgateBackoffice({ client, metadata, navigation = [], childre
       <Route path="payments/list" element={<PaymentList />} /><Route path="payments/test" element={<TestPayment />} />
       <Route path="logs" element={<Logs />} /><Route path="notifications" element={<Notifications />} /><Route path="about" element={<About />} />
       <Route path="settings" element={<WebsiteSettings />} />
+      <Route path="widgets/*" element={<WidgetLibrary />} />
       <Route path="*" element={<Navigate to={path(fallback)} replace />} />
     </Route></Route></Route></Route>
     {publicHome && <Route path="/" element={<PublicHomeGate>{publicHome}</PublicHomeGate>} />}

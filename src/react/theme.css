@@ -12,7 +12,6 @@
   --ink-700: 39 50 70; --ink-600: 60 73 96; --ink-500: 89 103 125;
   --mist: 232 237 247; --mist-muted: 174 187 207; --mist-dim: 144 158 184;
 }
-:root[data-density="compact"] { font-size: 14px; }
 button:disabled, fieldset:disabled { cursor: default; }
 :focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 3px; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }

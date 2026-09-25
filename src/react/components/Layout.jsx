@@ -132,7 +132,7 @@ export function Layout({ developerMode = true }) {
           <AccountMenu />
         </header>
         <main ref={main} tabIndex={-1} className="app-main flex-1 overflow-y-auto" id="main-content">
-          <div className="mx-auto w-full max-w-7xl">
+          <div className="app-content">
             <EmailVerificationPrompt />
             <Suspense fallback={<PageSkeleton />}>
               <div key={location.pathname} className="page-transition">

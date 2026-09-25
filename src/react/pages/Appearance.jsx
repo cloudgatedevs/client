@@ -5,10 +5,18 @@ import { useCloudgate } from '../context.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { Save, RotateCcw, Upload, Images } from 'lucide-react';
 import { useSettings } from '../settings/SettingsProvider.jsx';
-import { THEME_PRESETS, isHex, foreground, validateSettings } from '../../platform/appearance-model.js';
+import {
+  PALETTE_COLOR_KEYS,
+  paletteVariables,
+  LAYOUT_PRESETS,
+  normalizeDensity,
+  isHex,
+  validateSettings,
+} from '../../platform/appearance-model.js';
 
 import { PageHead, ErrorNote, Spinner } from '../components/ui.jsx';
 import { Field, Notice } from '../components/forms.jsx';
+import { PalettePicker } from '../settings/PalettePicker.jsx';
 import { MediaImagePicker } from '../components/MediaImagePicker.jsx';
 
 const appearanceKeys = [
@@ -21,7 +29,12 @@ const appearanceKeys = [
   'support_email',
   'footer_note',
 ];
-const themeKeys = ['theme_mode', 'theme_density', 'theme_primary', 'theme_secondary'];
+const themeKeys = [
+  'theme_mode',
+  'theme_density',
+  ...PALETTE_COLOR_KEYS,
+  'theme_custom_palette',
+];
 export function Appearance({ theme = false }) {
   const { can } = usePermissions();
   const canEdit = can(theme ? P.ThemeEdit : P.BrandingEdit);
@@ -59,7 +72,8 @@ export function Appearance({ theme = false }) {
     setFailure(null);
     try {
       const result = await uploadImage(file, MEDIA_FOLDERS[1]);
-      if (!result?.url) throw new Error('The image service did not return an image URL.');
+      if (!result?.url)
+        throw new Error('The image service did not return an image URL.');
       set(key, result.url);
     } catch (err) {
       setFailure(err);
@@ -80,7 +94,9 @@ export function Appearance({ theme = false }) {
     setBusy(true);
     setFailure(null);
     try {
-      await save(Object.fromEntries(keys.map((key) => [key, form[key].trim()])));
+      await save(
+        Object.fromEntries(keys.map((key) => [key, form[key].trim()])),
+      );
       setNotice(theme ? 'Theme saved.' : 'Appearance saved.');
     } catch (err) {
       setFailure(err);
@@ -96,7 +112,7 @@ export function Appearance({ theme = false }) {
         title={theme ? 'Theme' : 'Appearance'}
         subtitle={
           theme
-            ? 'Set the colours, display mode and spacing for this back office.'
+            ? 'Set the colours, display mode and layout for this back office.'
             : 'Make the application your own with a name, logo and contact details.'
         }
       />
@@ -107,8 +123,11 @@ export function Appearance({ theme = false }) {
         </button>
       )}
       <Notice>{notice}</Notice>
-      <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <fieldset disabled={!canEdit || busy || !!error} className="card min-w-0 space-y-5 p-5 sm:p-6">
+      <form onSubmit={submit} className="appearance-form">
+        <fieldset
+          disabled={!canEdit || busy || !!error}
+          className="card min-w-0 space-y-5 p-5 sm:p-6"
+        >
           {theme ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -124,62 +143,56 @@ export function Appearance({ theme = false }) {
                     <option value="system">Use system setting</option>
                   </select>
                 </Field>
-                <Field label="Density" id="theme-density">
-                  <select
-                    id="theme-density"
-                    className="input"
-                    value={form.theme_density}
-                    onChange={(e) => set('theme_density', e.target.value)}
-                  >
-                    <option value="comfortable">Comfortable</option>
-                    <option value="compact">Compact</option>
-                  </select>
-                </Field>
               </div>
-              <div>
-                <p className="label mb-3">Colour presets</p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {THEME_PRESETS.map(([name, primary, secondary]) => (
-                    <button
-                      type="button"
-                      key={name}
-                      className={`btn-ghost justify-start ${form.theme_primary === primary && form.theme_secondary === secondary ? 'ring-2 ring-accent' : ''}`}
-                      onClick={() => {
-                        set('theme_primary', primary);
-                        set('theme_secondary', secondary);
-                      }}
-                    >
-                      <span className="h-4 w-4 rounded-full" style={{ background: primary }} />
-                      {name}
-                    </button>
+              <fieldset className="layout-choices">
+                <legend className="label">Layout &amp; spacing</legend>
+                <div className="layout-choices-grid">
+                  {LAYOUT_PRESETS.map((preset) => (
+                    <label key={preset.value} className="layout-choice">
+                      <span
+                        className="layout-mini"
+                        data-layout={preset.value}
+                        aria-hidden="true"
+                      >
+                        <i />
+                        <span>
+                          <b>
+                            {Array.from(
+                              { length: preset.value === 'compact' ? 5 : 3 },
+                              (_, index) => (
+                                <em key={index} />
+                              ),
+                            )}
+                          </b>
+                        </span>
+                      </span>
+                      <span className="layout-choice-heading">
+                        <strong>{preset.label}</strong>
+                        <input
+                          type="radio"
+                          name="theme-density"
+                          value={preset.value}
+                          aria-label={preset.label}
+                          aria-describedby={`layout-${preset.value}-description`}
+                          checked={
+                            normalizeDensity(form.theme_density) ===
+                            preset.value
+                          }
+                          onChange={() => set('theme_density', preset.value)}
+                        />
+                      </span>
+                      <p id={`layout-${preset.value}-description`}>
+                        {preset.description}
+                      </p>
+                    </label>
                   ))}
                 </div>
-              </div>
-              {[
-                ['Primary colour', 'theme_primary'],
-                ['Secondary colour', 'theme_secondary'],
-              ].map(([label, key]) => (
-                <Field key={key} id={key} label={label}>
-                  <div className="flex gap-3">
-                    <input
-                      type="color"
-                      className="h-10 w-12 cursor-pointer rounded border border-ink-600"
-                      aria-label={`${label} picker`}
-                      value={isHex(form[key]) ? form[key] : '#000000'}
-                      onChange={(e) => set(key, e.target.value)}
-                    />
-                    <input
-                      id={key}
-                      className="input font-mono"
-                      maxLength={7}
-                      pattern="#[0-9a-fA-F]{6}"
-                      required
-                      value={form[key]}
-                      onChange={(e) => set(key, e.target.value)}
-                    />
-                  </div>
-                </Field>
-              ))}
+                <p className="layout-preview-note mt-3">
+                  Changes are shown in the preview. Save to apply the layout
+                  across the back office.
+                </p>
+              </fieldset>
+              <PalettePicker key={JSON.stringify(settings)} value={form} onChange={patch => { setNotice(''); setForm(old => ({...old, ...patch})); }} />
             </>
           ) : (
             <>
@@ -239,8 +252,15 @@ export function Appearance({ theme = false }) {
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" className="btn-ghost" disabled={!can(P.MediaView)} aria-label={`Choose existing ${label.toLowerCase()}`} onClick={() => setImagePicker({ key, label })}>
-                      <Images size={15} aria-hidden="true" />Choose existing
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      disabled={!can(P.MediaView)}
+                      aria-label={`Choose existing ${label.toLowerCase()}`}
+                      onClick={() => setImagePicker({ key, label })}
+                    >
+                      <Images size={15} aria-hidden="true" />
+                      Choose existing
                     </button>
                     <label className="btn-ghost w-fit cursor-pointer">
                       <Upload size={15} />
@@ -258,7 +278,11 @@ export function Appearance({ theme = false }) {
                       />
                     </label>
                     {form[key] && (
-                      <button type="button" className="btn-ghost" onClick={() => set(key, '')}>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => set(key, '')}
+                      >
                         Remove {label.toLowerCase()}
                       </button>
                     )}
@@ -312,10 +336,12 @@ export function Appearance({ theme = false }) {
               <RotateCcw size={15} />
               Reset changes
             </button>
-            {dirty && <span className="text-xs text-mist-dim">Unsaved changes</span>}
+            {dirty && (
+              <span className="text-xs text-mist-dim">Unsaved changes</span>
+            )}
           </div>
         </fieldset>
-        <aside className="space-y-3">
+        <aside className="appearance-preview space-y-3">
           <p className="label">Preview</p>
           <ThemePreview settings={form} />
           <p className="text-xs leading-relaxed text-mist-dim">
@@ -323,61 +349,132 @@ export function Appearance({ theme = false }) {
           </p>
         </aside>
       </form>
-      <MediaImagePicker open={!!imagePicker} label={imagePicker?.label} value={imagePicker ? form[imagePicker.key] : ''}
-        onClose={() => setImagePicker(null)} onSelect={file => {
+      <MediaImagePicker
+        open={!!imagePicker}
+        label={imagePicker?.label}
+        value={imagePicker ? form[imagePicker.key] : ''}
+        onClose={() => setImagePicker(null)}
+        onSelect={(file) => {
           set(imagePicker.key, file.url);
           setFailure(null);
           setImagePicker(null);
-        }} />
+        }}
+      />
     </div>
   );
 }
 function ThemePreview({ settings }) {
-  const dark = settings.theme_mode === 'dark';
-  const primary = isHex(settings.theme_primary) ? settings.theme_primary : '#4f46e5';
+  const [systemDark, setSystemDark] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setSystemDark(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  const dark =
+    settings.theme_mode === 'dark' ||
+    (settings.theme_mode === 'system' && systemDark);
+  const density = normalizeDensity(settings.theme_density);
+  const preset = LAYOUT_PRESETS.find((item) => item.value === density);
+  const variables = paletteVariables(settings, dark);
+  const primary = isHex(settings.theme_primary)
+    ? settings.theme_primary
+    : '#4f46e5';
   return (
-    <div
-      className="theme-preview overflow-hidden rounded-[18px] border border-ink-700 shadow-panel"
-      style={{ background: dark ? '#111827' : '#fff', color: dark ? '#e8edf7' : '#0f172a', '--preview-line': dark ? 'rgb(232 237 247 / .1)' : 'rgb(15 23 42 / .1)' }}
-    >
-      <div className="flex items-center gap-3 border-b border-[var(--preview-line)] p-5">
-        {settings.app_logo_url && /^https?:\/\//.test(settings.app_logo_url) ? (
-          <img src={settings.app_logo_url} alt="" className="h-9 w-9 rounded object-contain" />
-        ) : (
-          <span
-            className="grid h-9 w-9 place-items-center rounded-lg font-bold"
-            style={{ background: primary, color: `rgb(${foreground(primary)})` }}
-          >
-            {(settings.app_name || 'A')[0]}
-          </span>
-        )}
-        <div>
-          <strong className="block">{settings.app_name || 'Application'}</strong>
-          <small className="opacity-60">{settings.app_tagline || 'Back office'}</small>
+    <>
+      <div
+        className="theme-preview overflow-hidden rounded-[18px] border border-ink-700 shadow-panel"
+        data-density={density}
+        style={{
+          ...variables,
+          colorScheme: dark ? 'dark' : 'light',
+          background: 'rgb(var(--ink-850))',
+          color: 'rgb(var(--mist))',
+          '--preview-line': 'rgb(var(--ink-700))',
+        }}
+      >
+        <div className="flex items-center gap-3 border-b border-[var(--preview-line)] p-5">
+          {settings.app_logo_url &&
+          /^https?:\/\//.test(settings.app_logo_url) ? (
+            <img
+              src={settings.app_logo_url}
+              alt=""
+              className="h-9 w-9 rounded object-contain"
+            />
+          ) : (
+            <span
+              className="grid h-9 w-9 place-items-center rounded-lg font-bold"
+              style={{
+                background: primary,
+                color: `rgb(${variables['--accent-fg']})`,
+              }}
+            >
+              {(settings.app_name || 'A')[0]}
+            </span>
+          )}
+          <div>
+            <strong className="block">
+              {settings.app_name || 'Application'}
+            </strong>
+            <small className="opacity-60">
+              {settings.app_tagline || 'Back office'}
+            </small>
+          </div>
         </div>
-      </div>
-      <div className="space-y-4 p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider opacity-50">Dashboard</p>
-        <div className="grid grid-cols-2 gap-3">
-          {['Users', 'Activity'].map((label) => (
-            <div key={label} className="rounded-xl border border-[var(--preview-line)] p-3">
-              <small className="opacity-60">{label}</small>
-              <p className="mt-1 text-xl font-semibold">128</p>
+        <div className="theme-preview-body">
+          <div className="theme-preview-content">
+            <p className="text-xs font-semibold uppercase tracking-wider opacity-50">
+              Dashboard
+            </p>
+            <div className="theme-preview-metrics">
+              {['Users', 'Activity'].map((label) => (
+                <div key={label}>
+                  <small className="opacity-60">{label}</small>
+                  <p className="mt-1 text-xl font-semibold">128</p>
+                </div>
+              ))}
             </div>
-          ))}
+            <div className="theme-preview-rows">
+              {['Website refresh', 'Customer portal', 'Monthly report'].map(
+                (name) => (
+                  <div key={name} className="theme-preview-row">
+                    <span>{name}</span>
+                    <span style={{color: 'rgb(var(--cgw-success))', opacity: 1}}>Ready</span>
+                  </div>
+                ),
+              )}
+            </div>
+            <span
+              className="theme-preview-action"
+              style={{
+                background: primary,
+                color: `rgb(${variables['--accent-fg']})`,
+              }}
+            >
+              Primary action
+            </span>
+            <div
+              className="h-1.5 rounded-full"
+              style={{
+                background: isHex(settings.theme_secondary)
+                  ? settings.theme_secondary
+                  : '#7c3aed',
+              }}
+            />
+            <div className="palette-preview-statuses">{[['success','Healthy'],['warning','Pending'],['danger','Error'],['info','Info']].map(([tone,label]) => <span key={tone} style={{color: 'rgb(var(--cgw-' + tone + '))', background: 'rgb(var(--cgw-' + tone + ') / .08)'}}>{label}</span>)}</div>
+            <p className="text-xs opacity-60">
+              {settings.footer_note || 'Your workspace, your brand.'}
+            </p>
+          </div>
         </div>
-        <span
-          className="inline-block rounded-lg px-4 py-2 text-xs font-semibold"
-          style={{ background: primary, color: `rgb(${foreground(primary)})` }}
-        >
-          Primary action
-        </span>
-        <div
-          className="h-1.5 rounded-full"
-          style={{ background: isHex(settings.theme_secondary) ? settings.theme_secondary : '#7c3aed' }}
-        />
-        <p className="text-xs opacity-60">{settings.footer_note || 'Your workspace, your brand.'}</p>
       </div>
-    </div>
+      <p className="layout-preview-note">
+        <strong>{preset.label}</strong> · {preset.detail}
+      </p>
+    </>
   );
 }

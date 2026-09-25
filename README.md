@@ -5,6 +5,18 @@ The core has no runtime dependencies and works in browsers and Node 18+.
 React applications opt into `@cloudgatedevs/cloudgate-client/react` and its peer dependencies.
 The existing workflow client and WebSocket exports remain compatible.
 
+## React widget library
+
+Reusable tables, charts, cards, controls and animated dialogs are available from
+`@cloudgatedevs/cloudgate-client/react/widgets`. Import the shared React stylesheet
+once. Widgets inherit your app's appearance and work without back-office providers.
+
+The back-office **Widget library** page includes interactive examples, API notes
+and recipes. `DataTable` supports remote lazy loading, debounced search, filters,
+sorting, pagination, load-more/infinite scrolling, selection and column visibility.
+Build agents can read the same version-matched catalogue through the packaged
+read-only MCP server or offline CLI. See [the widget guide](docs/widgets.md).
+
 ## Native platform and React back office (0.6)
 
 ```jsx
@@ -648,6 +660,22 @@ Deploy the backend and `20260925190000_Seed_Idp_Backoffice_Permissions` migratio
 The migration adds missing built-in roles/permissions across existing tenants, preserves custom
 permissions and explicit denials, and does not overwrite subsequent role edits. New tenants are
 seeded during creation. Saving an empty permission list explicitly revokes all back-office access.
+
+### Colour palettes
+
+Administration → Theme includes eight coordinated colour palettes, previews in
+light/dark/system mode, and a named custom palette editor. Palettes set the primary,
+secondary, workspace tint, success, warning, error and information colours. Custom
+palettes remain available when switching presets; Save changes applies the theme
+to that app and environment. The Widget Library offers the same palettes for
+temporary previews. Existing primary and secondary colours remain intact.
+
+The platform entry exports `PALETTE_PRESETS`, `PALETTE_COLOR_KEYS`,
+`paletteVariables(values, dark)` and `parseCustomPalette(value)` for integrations.
+Use the matching Cloudgate backend before publishing this SDK update: it accepts
+the additional `theme_*` colour fields and validates `theme_custom_palette` as a
+bounded `{name, colors}` JSON string. These use existing appearance storage and
+revision checks, so no database migration is required for palettes.
 
 ### Account menu and security
 

@@ -10,3 +10,7 @@
 @import './integrations/cloudgate-workflow-logs.css';
 @import './account.css';
 @import './popover.css';
+@import './widgets/widgets.css';
+@import './widgets/library.css';
+@import './layout.css';
+@import './palettes.css';

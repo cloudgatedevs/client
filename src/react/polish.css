@@ -242,7 +242,6 @@
   .app-main .stat-card > p.mt-2 { margin-top: 6px; }
   .input, .btn-primary, .btn-ghost, .btn-danger { min-height: 32px; border-radius: 6px; }
 }
-:root[data-density="compact"] .data-table td { padding-block: 7px; }
 @media (max-width: 639px) {
   .app-main { padding-top: 24px; }
   .modal-panel.card { padding: 22px; border-radius: 20px; max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom)); }

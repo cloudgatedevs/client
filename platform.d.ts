@@ -61,6 +61,21 @@ export function createAppearanceClient(options: { request: PlatformRequest; publ
 };
 export const DEFAULT_SETTINGS: Readonly<AppearanceValues>;
 export const THEME_PRESETS: Array<[string, string, string]>;
+export type PaletteColorKey = 'theme_primary' | 'theme_secondary' | 'theme_neutral' | 'theme_success' | 'theme_warning' | 'theme_danger' | 'theme_info';
+export type PaletteColors = Record<PaletteColorKey, string>;
+export interface ThemePalette { id: string; name: string; description: string; colors: PaletteColors }
+export interface CustomPalette { name: string; colors: PaletteColors }
+export const PALETTE_PRESETS: ThemePalette[];
+export const PALETTE_ROLES: Array<{ key: PaletteColorKey; label: string; hint: string }>;
+export const PALETTE_COLOR_KEYS: PaletteColorKey[];
+export const PALETTE_DEFAULTS: Readonly<PaletteColors & { theme_custom_palette: string }>;
+export function paletteColors(values?: Partial<AppearanceValues>): PaletteColors;
+export function paletteMatches(left: Partial<AppearanceValues>, right: Partial<AppearanceValues>): boolean;
+export function parseCustomPalette(value: unknown): CustomPalette | null;
+export function paletteVariables(values?: Partial<AppearanceValues>, dark?: boolean): Record<string, string>;
+export function contrastRatio(first: string | number[], second: string | number[]): number;
+export const LAYOUT_PRESETS: ReadonlyArray<{ value: 'wide' | 'content' | 'compact' | 'flex'; label: string; description: string; detail: string }>;
+export function normalizeDensity(value: unknown): 'wide' | 'content' | 'compact' | 'flex';
 export function normalizeSettings(values?: Partial<AppearanceValues>): AppearanceValues;
 export function validateSettings(values: AppearanceValues): string | null;
 export function isHex(value: unknown): boolean;
@@ -72,6 +87,7 @@ export const ADMIN_ROLES: readonly string[];
 export function isAdminRole(role: unknown): boolean;
 export interface IdpRolePermission { key: string; value: string }
 export const BACKOFFICE_PERMISSIONS: Readonly<{
+  WidgetsView: 'backoffice.widgets.view';
   Access: 'backoffice.access';
   DashboardView: 'backoffice.dashboard.view';
   OrdersView: 'backoffice.orders.view';
