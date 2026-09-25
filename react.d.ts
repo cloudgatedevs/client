@@ -1,9 +1,10 @@
 import type { ComponentType, Context, DependencyList, ReactNode, RefObject } from 'react';
-import type { AppearanceValues, CloudgatePlatform, IdpProfile, AppIdentity } from './platform.js';
+import type { AppearanceValues, CloudgatePlatform, IdpProfile, IdpRolePermission, AppIdentity } from './platform.js';
 import type { CloudgateSession } from './index.js';
 export { getProfileDisplayName, getProfilePictureSrc } from './platform.js';
 export interface NavigationBase {
   label: string; icon?: ComponentType<any>; group?: string; keywords?: string[];
+  permission?: string;
   /** Reserved for SDK controls; application items belong to the default app section. */
   section?: 'app' | 'platform';
 }
@@ -21,7 +22,7 @@ export function useCloudgate(): CloudgateContextValue;
 export const PLATFORM_NAV: NavigationItem[];
 export interface AuthContextValue {
   loading: boolean; auth?: CloudgateSession; error?: Error | null;
-  currentUser?: { user: { id: string | number; name: string; surname: string; emailAddress: string; userName: string; photoUrl?: string; role?: string | null; isEmailConfirmed?: boolean | null; promptForEmailVerification?: boolean }; tenant: { tenancyName: string } };
+  currentUser?: { user: { id: string | number; name: string; surname: string; emailAddress: string; userName: string; photoUrl?: string; role?: string | null; rolePermissions?: IdpRolePermission[]; isEmailConfirmed?: boolean | null; promptForEmailVerification?: boolean }; tenant: { tenancyName: string } };
   headerUser?: AuthContextValue['currentUser']; logout(redirect?: boolean): void;
   updateUser(values: Pick<IdpProfile, 'name' | 'surname' | 'email'>): Promise<void>; refreshLoginDetails(options?: { silent?: boolean }): Promise<IdpProfile | undefined>;
   updateProfilePicture(file: Blob | null): Promise<void>;
@@ -29,6 +30,7 @@ export interface AuthContextValue {
 export const AuthContext: Context<AuthContextValue | null>;
 export function AuthProvider(props: { children?: ReactNode; publicAccess?: boolean; onLogoutRedirect?: () => void }): ReactNode;
 export function useAuthContext(): AuthContextValue;
+export function usePermissions(): { can(permission: string): boolean; permissions: IdpRolePermission[] };
 export function RequireAuth(): ReactNode;
 export function RequireAdmin(): ReactNode;
 export function Profile(): ReactNode;

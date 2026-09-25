@@ -13,7 +13,7 @@ export type IdentityResolver = () => Promise<AppIdentity>;
 export function isWebAppId(value: unknown): boolean;
 export function createAppIdentityResolver(options?: { webAppId?: string; environment?: string; resolvePublishedApp?: () => Promise<PublishedApp | null> }): IdentityResolver;
 export function createPublishedAnalyticsResolver(options?: { readWindow?: () => unknown; fetchImpl?: typeof fetch }): () => Promise<PublishedApp | null>;
-export interface IdpProfile { isEmailConfirmed?: boolean | null; promptForEmailVerification?: boolean; id: number | string; name?: string; surname?: string; email?: string; role?: string | null; photoUrl?: string | null }
+export interface IdpProfile { isEmailConfirmed?: boolean | null; promptForEmailVerification?: boolean; id: number | string; name?: string; surname?: string; email?: string; role?: string | null; rolePermissions?: IdpRolePermission[]; photoUrl?: string | null }
 export function normalizeProfile(raw: unknown): IdpProfile;
 export function getProfileDisplayName(profile: Partial<IdpProfile>): string;
 export function getProfilePictureSrc(profile: Partial<IdpProfile>): string | undefined;
@@ -71,10 +71,58 @@ export function accentText(hex: string, dark: boolean): string;
 export const ADMIN_ROLES: readonly string[];
 export function isAdminRole(role: unknown): boolean;
 export interface IdpRolePermission { key: string; value: string }
+export const BACKOFFICE_PERMISSIONS: Readonly<{
+  Access: 'backoffice.access';
+  DashboardView: 'backoffice.dashboard.view';
+  OrdersView: 'backoffice.orders.view';
+  AnalyticsView: 'backoffice.analytics.view';
+  LogsView: 'backoffice.logs.view';
+  PaymentsView: 'backoffice.payments.view';
+  PaymentsHistory: 'backoffice.payments.history';
+  PaymentsTestView: 'backoffice.payments.testView';
+  PaymentsTestCreate: 'backoffice.payments.testCreate';
+  UsersView: 'backoffice.users.view';
+  UsersCreate: 'backoffice.users.create';
+  UsersEdit: 'backoffice.users.edit';
+  UsersDelete: 'backoffice.users.delete';
+  UsersInvite: 'backoffice.users.invite';
+  UsersResetPassword: 'backoffice.users.resetPassword';
+  UsersAssignRoles: 'backoffice.users.assignRoles';
+  RolesView: 'backoffice.roles.view';
+  RolesCreate: 'backoffice.roles.create';
+  RolesEdit: 'backoffice.roles.edit';
+  RolesDelete: 'backoffice.roles.delete';
+  RegistrationView: 'backoffice.registration.view';
+  RegistrationEdit: 'backoffice.registration.edit';
+  NotificationsView: 'backoffice.notifications.view';
+  NotificationsSend: 'backoffice.notifications.send';
+  SmtpView: 'backoffice.smtp.view';
+  SmtpEdit: 'backoffice.smtp.edit';
+  SmtpSendTest: 'backoffice.smtp.sendTest';
+  SmtpDelete: 'backoffice.smtp.delete';
+  EmailTemplateView: 'backoffice.emailTemplate.view';
+  EmailTemplateEdit: 'backoffice.emailTemplate.edit';
+  MediaView: 'backoffice.media.view';
+  MediaUpload: 'backoffice.media.upload';
+  MediaDelete: 'backoffice.media.delete';
+  BrandingView: 'backoffice.branding.view';
+  BrandingEdit: 'backoffice.branding.edit';
+  ThemeView: 'backoffice.theme.view';
+  ThemeEdit: 'backoffice.theme.edit';
+  SettingsView: 'backoffice.settings.view';
+  SettingsEdit: 'backoffice.settings.edit';
+  DeveloperAccess: 'backoffice.developer.access';
+}>;
+export const BACKOFFICE_PERMISSION_KEYS: readonly string[];
+export const BACKOFFICE_PERMISSION_TREE: Array<{ key?: string; label: string; children?: Array<{ key: string; label: string }> }>;
+export function hasBackofficePermission(profile: Pick<IdpProfile, 'rolePermissions'> | null | undefined, permission?: string): boolean;
+export function canAccessBackoffice(profile: Pick<IdpProfile, 'rolePermissions'> | null | undefined): boolean;
+export function normalizeRolePermissions(entries?: IdpRolePermission[]): IdpRolePermission[];
 export interface IdpManagedRole { id: number | null; name: string; isDefault: boolean; userCount: number; permissions: IdpRolePermission[] }
 export interface IdpRoleSave { id?: number | null; name: string; permissions: IdpRolePermission[] }
 export function createRolesClient(options: { request: PlatformRequest }): {
   list(options?: PlatformRequestOptions): Promise<{ items: IdpManagedRole[] }>;
+  options(options?: PlatformRequestOptions): Promise<{ items: Array<{ name: string }> }>;
   create(values: IdpRoleSave, options?: PlatformRequestOptions): Promise<IdpManagedRole>;
   update(values: IdpRoleSave, options?: PlatformRequestOptions): Promise<IdpManagedRole>;
   delete(id: number, options?: PlatformRequestOptions): Promise<{ deleted: boolean }>;

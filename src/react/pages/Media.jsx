@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { MEDIA_FOLDERS } from '../../platform/features.js';
 import { useCloudgate } from '../context.jsx';
 import { useRef, useState } from 'react';
@@ -9,6 +11,7 @@ import { Modal, Notice } from '../components/forms.jsx';
 
 const PAGE_SIZE = 24;
 export function Media() {
+  const { can } = usePermissions();
   const { client } = useCloudgate();
   const { list: listImages, upload: uploadImage, delete: deleteImage } = client.files;
   const { settings, error: settingsError, loading: settingsLoading } = useSettings();
@@ -85,7 +88,7 @@ export function Media() {
           <RefreshCw size={16} />
           Refresh
         </button>
-        <button className="btn-primary" onClick={() => input.current?.click()} disabled={busy}>
+        <button className="btn-primary" onClick={() => input.current?.click()} disabled={!can(P.MediaUpload) || busy}>
           <Upload size={16} />
           {busy ? 'Working…' : 'Upload images'}
         </button>
@@ -96,6 +99,7 @@ export function Media() {
           multiple
           hidden
           aria-label="Upload images"
+          disabled={!can(P.MediaUpload) || busy}
           onChange={(e) => {
             upload(Array.from(e.target.files || []));
             e.target.value = '';
@@ -176,7 +180,7 @@ export function Media() {
                   </a>
                   <button
                     className="btn-danger btn-sm ml-auto"
-                    disabled={busy || used(file) || settingsLoading || !!settingsError}
+                    disabled={!can(P.MediaDelete) || busy || used(file) || settingsLoading || !!settingsError}
                     title={
                       used(file) ? 'Remove this image from Appearance before deleting it.' : 'Delete image'
                     }
@@ -235,7 +239,7 @@ export function Media() {
           <button className="btn-ghost" disabled={busy} onClick={() => setPendingDelete(null)}>
             Cancel
           </button>
-          <button className="btn-danger" disabled={busy} onClick={remove}>
+          <button className="btn-danger" disabled={!can(P.MediaDelete) || busy} onClick={remove}>
             {busy ? 'Deleting…' : 'Delete image'}
           </button>
         </div>

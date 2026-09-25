@@ -5,9 +5,15 @@ import { useCloudgate } from '../context.jsx';
 import { validateRole } from '../../platform/role-management.js';
 import { useAsync, Table, Badge, PageHead, SearchBar, Spinner, ErrorNote, Pager } from '../components/ui.jsx';
 import { Modal, Field, Notice } from '../components/forms.jsx';
+import { PermissionTree } from '../components/PermissionTree.jsx';
+import { BACKOFFICE_PERMISSIONS as P, BACKOFFICE_PERMISSION_KEYS, normalizeRolePermissions } from '../../platform/backoffice-permissions.js';
+import { usePermissions } from '../auth/permissions.jsx';
+import { useAuthContext } from '../auth/useAuthContext.js';
 
 export function RoleManagement() {
   const { client } = useCloudgate();
+  const { can } = usePermissions();
+  const { refreshLoginDetails } = useAuthContext();
   const [filter, setFilter] = useState('');
   const [page, setPage] = useState(0);
   const [form, setForm] = useState(null);
@@ -30,7 +36,7 @@ export function RoleManagement() {
     try { await operation(); } catch (e) { setError(e); }
     finally { mutation.current = false; setBusy(false); }
   };
-  const edit = role => { setError(null); setForm(role ? { ...role, editing: true, permissions: role.permissions.map(p => ({ ...p })) } : { name: '', permissions: [], editing: false }); };
+  const edit = role => { setError(null); setForm(role ? { ...role, editing: true, permissions: normalizeRolePermissions(role.permissions) } : { name: '', permissions: normalizeRolePermissions(), editing: false }); };
   const save = event => {
     event.preventDefault();
     run(async () => {
@@ -40,14 +46,14 @@ export function RoleManagement() {
       if (form.id != null) values.id = form.id;
       const result = await client.roles[form.editing ? 'update' : 'create'](values);
       if (!result?.id || !result?.name) throw new Error('Unable to verify the saved role. Refresh before retrying.');
-      setForm(null); setNotice('Role saved.'); roles.reload();
+      setForm(null); setNotice('Role saved.'); roles.reload(); await refreshLoginDetails({ silent: true });
     });
   };
   const updatePermission = (index, key, value) => setForm(previous => ({ ...previous, permissions: previous.permissions.map((p, i) => i === index ? { ...p, [key]: value } : p) }));
   return <div className="space-y-5">
-    <PageHead title="Roles" subtitle="Manage roles and custom permissions for your tenant’s IdP users.">
+    <PageHead title="Roles" subtitle="Choose which pages and actions each app role can access.">
       <button className="btn-ghost" disabled={busy || roles.loading} onClick={roles.reload}><RefreshCw size={16} />Refresh</button>
-      <button className="btn-primary" disabled={busy || roles.loading || !!roles.error} onClick={() => edit(null)}><Plus size={16} />Create role</button>
+      {can(P.RolesCreate) && <button className="btn-primary" disabled={busy || roles.loading || !!roles.error} onClick={() => edit(null)}><Plus size={16} />Create role</button>}
     </PageHead>
     <Notice>Roles are shared across this Cloudgate tenant. Assign them in <Link className="underline" to="/users">Users</Link>. Built-in names cannot be renamed or deleted.</Notice>
     <SearchBar value={filter} placeholder="Search roles…" onChange={e => { setFilter(e.target.value); setPage(0); }} onSubmit={e => e.preventDefault()} />
@@ -56,32 +62,34 @@ export function RoleManagement() {
       { key: 'name', label: 'Role', mobile: 'title', render: role => <span className="font-medium">{role.name}</span> },
       { key: 'isDefault', label: 'Type', render: role => <Badge tone={role.isDefault ? 'gray' : 'blue'}>{role.isDefault ? 'Built-in' : 'Custom'}</Badge> },
       { key: 'userCount', label: 'Users' },
-      { key: 'permissions', label: 'Permissions', render: role => role.permissions.length },
+      { key: 'permissions', label: 'Permissions', render: role => role.permissions.filter(p => ['true', '1'].includes(String(p.value).toLowerCase())).length },
       { key: 'actions', label: 'Actions', mobile: 'actions', render: role => <div className="flex flex-wrap gap-2">
-        <button className="btn-ghost btn-sm" aria-label={`Edit ${role.name}`} disabled={busy} onClick={() => edit(role)}>Edit</button>
-        {!role.isDefault && <button className="btn-ghost btn-sm" disabled={busy || role.userCount > 0} title={role.userCount ? 'Reassign users before deleting this role.' : undefined}
+        <button className="btn-ghost btn-sm" aria-label={`${can(P.RolesEdit) ? 'Edit' : 'View'} ${role.name}`} disabled={busy} onClick={() => edit(role)}>{can(P.RolesEdit) ? 'Edit' : 'View'}</button>
+        {can(P.RolesDelete) && !role.isDefault && <button className="btn-ghost btn-sm" disabled={busy || role.userCount > 0} title={role.userCount ? 'Reassign users before deleting this role.' : undefined}
           aria-label={`Delete ${role.name}`} onClick={() => { setError(null); setDeleting(role); }}>Delete</button>}
       </div> },
     ]} />}
     {!roles.loading && !roles.error && <Pager page={current} pages={pages} total={filtered.length} from={filtered.length ? current * 25 + 1 : 0} to={Math.min((current + 1) * 25, filtered.length)} noun="roles" onPage={setPage} />}
-    <Modal open={!!form} title={form?.editing ? `Edit role: ${form.name}` : 'Create role'} onClose={busy ? undefined : () => { setForm(null); setError(null); }}>
-      {form && <form onSubmit={save} className="space-y-4">
+    <Modal open={!!form} title={form?.editing ? `${can(P.RolesEdit) ? 'Edit' : 'View'} role: ${form.name}` : 'Create role'} onClose={busy ? undefined : () => { setForm(null); setError(null); }}>
+      {form && <form onSubmit={save} className="space-y-4"><fieldset disabled={busy || !can(form.editing ? P.RolesEdit : P.RolesCreate)} className="space-y-4">
         <ErrorNote error={error} />
         <Field label="Role name" id="role-name"><input id="role-name" className="input" value={form.name} required minLength={2} maxLength={64} disabled={busy || form.isDefault}
           onChange={e => setForm(previous => ({ ...previous, name: e.target.value }))} /></Field>
-        <p className="text-xs text-mist-muted">Custom permission keys and values are interpreted by your application. The Admin role grants back-office access.</p>
+        <p className="text-xs text-mist-muted">Access comes from permissions, regardless of the role name. Use Read only to allow browsing without changes.</p>
+        <PermissionTree value={form.permissions} onChange={permissions => setForm(previous => ({ ...previous, permissions }))} disabled={busy || !can(form.editing ? P.RolesEdit : P.RolesCreate)} />
         {form.editing && !form.isDefault && <p className="text-xs text-mist-muted">Renaming also updates users currently assigned this role.</p>}
-        <div className="space-y-3">
-          {form.permissions.map((pair, index) => <div key={index} className="rounded-lg border border-ink-700 p-3 space-y-2">
+        <details><summary className="cursor-pointer text-sm font-medium">Custom application permissions</summary><div className="space-y-3 mt-3">
+          {form.permissions.map((pair, index) => BACKOFFICE_PERMISSION_KEYS.some(key => key.toLowerCase() === pair.key.toLowerCase()) ? null : <div key={index} className="rounded-lg border border-ink-700 p-3 space-y-2">
             <Field label={`Permission key ${index + 1}`} id={`permission-key-${index}`}><input className="input" id={`permission-key-${index}`} placeholder="orders.view" required maxLength={128} value={pair.key} disabled={busy} onChange={e => updatePermission(index, 'key', e.target.value)} /></Field>
             <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1"><Field label={`Permission value ${index + 1}`} id={`permission-value-${index}`}><input className="input" id={`permission-value-${index}`} placeholder="true" maxLength={512} value={pair.value} disabled={busy} onChange={e => updatePermission(index, 'value', e.target.value)} /></Field></div>
               <button type="button" className="btn-ghost p-2" aria-label={`Remove permission ${index + 1}`} disabled={busy} onClick={() => setForm(previous => ({ ...previous, permissions: previous.permissions.filter((_, i) => i !== index) }))}><Trash2 size={16} /></button>
             </div>
           </div>)}
-          <button type="button" className="btn-ghost btn-sm" disabled={busy || form.permissions.length >= 200} onClick={() => setForm(previous => ({ ...previous, permissions: [...previous.permissions, { key: '', value: '' }] }))}><Plus size={14} />Add permission</button>
-        </div>
-        <button className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save role'}</button>
+          <button type="button" className="btn-ghost btn-sm" disabled={busy || form.permissions.filter(p => !BACKOFFICE_PERMISSION_KEYS.includes(p.key)).length >= 200} onClick={() => setForm(previous => ({ ...previous, permissions: [...previous.permissions, { key: '', value: '' }] }))}><Plus size={14} />Add permission</button>
+        </div></details>
+        {can(form.editing ? P.RolesEdit : P.RolesCreate) && <button className="btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save role'}</button>}
+        </fieldset>
       </form>}
     </Modal>
     <Modal open={!!deleting} title="Delete role?" onClose={busy ? undefined : () => { setDeleting(null); setError(null); }}>

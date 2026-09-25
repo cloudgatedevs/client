@@ -17,7 +17,7 @@ export function AuthProvider({ children, publicAccess = false, onLogoutRedirect 
   }), []);
   const revision = useRef(0);
   const applyProfile = useCallback(profile => setCurrentUser({
-    user: { id: profile.id, name: profile.name ?? '', surname: profile.surname ?? '', emailAddress: profile.email ?? '', userName: profile.email ?? '', photoUrl: getProfilePictureSrc(profile), role: profile.role, isEmailConfirmed: profile.isEmailConfirmed, promptForEmailVerification: profile.promptForEmailVerification === true },
+    user: { id: profile.id, name: profile.name ?? '', surname: profile.surname ?? '', emailAddress: profile.email ?? '', userName: profile.email ?? '', photoUrl: getProfilePictureSrc(profile), role: profile.role, rolePermissions: profile.rolePermissions, isEmailConfirmed: profile.isEmailConfirmed, promptForEmailVerification: profile.promptForEmailVerification === true },
     tenant: { tenancyName: client.auth.tenancyName },
   }), [client]);
   const loadProfile = useCallback(async ({ silent = false } = {}) => {

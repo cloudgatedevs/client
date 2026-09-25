@@ -31,6 +31,7 @@ export * from './profile.js';
 export * from './account-security.js';
 export * from './features.js';
 export * from './roles.js';
+export * from './backoffice-permissions.js';
 export * from './role-management.js';
 export * from './launcher.js';
 export * from './account-link.js';

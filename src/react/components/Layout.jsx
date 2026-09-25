@@ -15,10 +15,14 @@ import { SidebarNavigation, useNavigationPreferences } from './SidebarNavigation
 import { navigationTrail } from './navigation.js';
 import { DeveloperDock } from './DeveloperDock.jsx';
 import { EmailVerificationPrompt } from './EmailVerificationPrompt.jsx';
+import { usePermissions, filterPermissionNavigation, RequirePagePermission } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 
 export function Layout({ developerMode = true }) {
-  const showDeveloperDock = developerMode && import.meta.env?.VITE_CLOUDGATE_BUILD_PREVIEW !== 'true';
-  const { navigation, identity, client, basePath, backofficePath, publicWebsite } = useCloudgate();
+  const { can } = usePermissions();
+  const showDeveloperDock = developerMode && can(P.DeveloperAccess) && import.meta.env?.VITE_CLOUDGATE_BUILD_PREVIEW !== 'true';
+  const { navigation: allNavigation, identity, client, basePath, backofficePath, publicWebsite } = useCloudgate();
+  const navigation = filterPermissionNavigation(allNavigation, can, basePath);
   const { currentUser } = useAuthContext();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -132,7 +136,7 @@ export function Layout({ developerMode = true }) {
             <EmailVerificationPrompt />
             <Suspense fallback={<PageSkeleton />}>
               <div key={location.pathname} className="page-transition">
-                <Outlet />
+                <RequirePagePermission><Outlet /></RequirePagePermission>
               </div>
             </Suspense>
             {settings.footer_note && (

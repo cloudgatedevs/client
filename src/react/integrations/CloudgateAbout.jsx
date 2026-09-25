@@ -133,7 +133,7 @@ export function CloudgateAbout({ appName, appVersion, description, showTitle = t
         <h4>What Cloudgate provides for this app</h4>
         <ul className="cg-about-facts">
           <li><Boxes size={15} /><span><strong>Platform features.</strong> Identity, branding, notifications, files, email and Wallet readiness use native Cloudgate APIs. Your own workflows are optional.</span></li>
-          <li><Users size={15} /><span><strong>Identity.</strong> Sign-in, roles and password recovery come from the tenant identity provider; administrators get this back office.</span></li>
+          <li><Users size={15} /><span><strong>Identity.</strong> Sign-in, roles and password recovery come from the tenant identity provider; role permissions control back-office access.</span></li>
           <li><ShoppingBag size={15} /><span><strong>Payments.</strong> Check readiness, browse payments and create sandbox checkouts here. Manage providers and payouts in the Cloudgate hub.</span></li>
           <li><Mail size={15} /><span><strong>Email.</strong> Customer emails go out through Cloudgate delivery by default, or your own SMTP server when enabled under Settings.</span></li>
           <li><Globe size={15} /><span><strong>Hosting.</strong> Publish app releases through Cloudgate. Shared back-office features are versioned through the Cloudgate npm client.</span></li>

@@ -75,3 +75,19 @@
   .user-row-actions .btn-sm { min-height: 36px; }
   .user-row-actions .row-action-trigger { width: 36px; }
 }
+.permission-tree { min-width: 0; }
+.permission-tree-toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.permission-tree-search { position: relative; display: flex; align-items: center; }
+.permission-tree-search > svg { position: absolute; left: 10px; color: rgb(var(--mist-dim)); }
+.permission-tree-search .input { padding-left: 32px; width: 100%; }
+.permission-tree-root, .permission-tree-leaf, .permission-tree-select-group { display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 12px; }
+.permission-tree-root { font-weight: 600; background: rgb(var(--accent) / .06); border-radius: 7px; }
+.permission-tree input[type=checkbox] { flex: none; width: 14px; height: 14px; accent-color: rgb(var(--accent)); }
+.permission-tree-groups { margin: 8px 0 0 7px; border-left: 1px solid rgb(var(--ink-700)); padding-left: 12px; max-height: min(360px, 27dvh); overflow-y: auto; }
+.permission-tree-group summary { display: flex; align-items: center; gap: 8px; padding: 10px 8px; cursor: pointer; font-size: 12px; font-weight: 550; list-style: none; }
+.permission-tree-group summary::-webkit-details-marker { display: none; }
+.permission-tree-group summary > span:last-child { margin-left: auto; }
+.permission-tree-group[open] summary > svg { transform: rotate(90deg); }
+.permission-tree-leaf { padding-left: 32px; }
+.permission-tree-select-group { color: rgb(var(--mist-muted)); padding-left: 24px; }
+.permission-tree:disabled { opacity: .7; }

@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { useEffect, useState } from 'react';
 import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import { Plus, RefreshCw } from 'lucide-react';
@@ -38,6 +40,7 @@ function Recipients({ client, environment, notification, onClose }) {
 }
 
 function History({ client, environment, onEnvironment }) {
+  const { can } = usePermissions();
   const [page, setPage] = useState(0), [createOpen, setCreateOpen] = useState(false), [selected, setSelected] = useState(null), [notice, setNotice] = useState('');
   const query = useQuery(signal => client.notificationAdmin.history({ environment, skip: page * 25, take: 25 }, { signal }), [client, environment, page]);
   const name = environment === 'prod' ? 'Production' : 'Sandbox';
@@ -45,7 +48,7 @@ function History({ client, environment, onEnvironment }) {
     <PageHead title="App notifications" subtitle="Send updates to app users and track their read receipts.">
       <Link className="btn-ghost" to="/notifications">My inbox</Link>
       <button className="btn-ghost" onClick={query.reload} disabled={query.loading || createOpen}><RefreshCw size={14} /> Refresh history</button>
-      <button className="btn-primary" disabled={!query.data || query.loading} onClick={() => { setCreateOpen(true); setNotice(''); }}><Plus size={14} /> Create notification</button>
+      <button className="btn-primary" disabled={!can(P.NotificationsSend) || !query.data || query.loading} onClick={() => { setCreateOpen(true); setNotice(''); }}><Plus size={14} /> Create notification</button>
     </PageHead>
     <div className="flex flex-wrap items-center gap-3"><label className="flex items-center gap-2 text-sm font-semibold">Notification environment<select aria-label="Notification environment" className="input" value={environment} disabled={createOpen} onChange={event => onEnvironment(event.target.value)}><option value="sbx">Sandbox</option><option value="prod">Production</option></select></label><span className="text-xs text-mist-muted">History and sends below apply to {name}.</span></div>
     <Notice>Notifications target app users across this tenant. Choose one user or all current users; new users do not receive earlier broadcasts.</Notice>

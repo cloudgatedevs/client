@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Mail, RefreshCw, Save, UserPlus } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
@@ -7,6 +9,7 @@ import { Notice } from '../components/forms.jsx';
 import { useSettings } from '../settings/SettingsProvider.jsx';
 
 export function Registration() {
+  const { can } = usePermissions();
   const { client } = useCloudgate();
   const { refreshLoginDetails } = useAuthContext();
   const { reload: reloadWebsite } = useSettings();
@@ -45,7 +48,7 @@ export function Registration() {
     } catch (failure) {
       if (!request.signal.aborted) {
         setError(failure);
-        // A revoked IdP Admin role or unavailable endpoint must be rechecked before another edit.
+        // A revoked permission or unavailable endpoint must be rechecked before another edit.
         if ([401, 403, 404].includes(failure.status)) setSaved(null);
       }
     } finally { lock.current = false; if (!request.signal.aborted) setBusy(false); }
@@ -60,7 +63,7 @@ export function Registration() {
       <ErrorNote error={error} />
       <Notice>{notice}</Notice>
       <form onSubmit={save} className="card max-w-3xl p-5">
-        <fieldset disabled={busy || !saved}>
+        <fieldset disabled={!can(P.RegistrationEdit) || busy || !saved}>
           <div className="flex items-start gap-3">
             <span className="stat-icon shrink-0"><UserPlus size={17} aria-hidden="true" /></span>
             <div className="min-w-0 flex-1">
@@ -95,7 +98,7 @@ export function Registration() {
               {saved && typeof saved.promptForEmailVerification !== 'boolean' && <p className="mt-2 text-xs text-mist-dim">Update your Cloudgate server to enable email verification reminders.</p>}
             </div>
           </div>
-          <p className="mt-4 text-xs text-mist-dim">Your IdP account must have the Admin role to change these settings.</p>
+          <p className="mt-4 text-xs text-mist-dim">Your role needs permission to edit user settings.</p>
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-ink-700 pt-4">
             <button type="submit" className="btn-primary" disabled={!dirty || busy}><Save size={14} />{busy ? 'Saving…' : 'Save changes'}</button>
             {dirty && <span className="text-xs text-mist-dim">Unsaved changes</span>}

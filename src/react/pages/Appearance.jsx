@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { MEDIA_FOLDERS } from '../../platform/features.js';
 import { useCloudgate } from '../context.jsx';
 import { useEffect, useRef, useState } from 'react';
@@ -21,6 +23,8 @@ const appearanceKeys = [
 ];
 const themeKeys = ['theme_mode', 'theme_density', 'theme_primary', 'theme_secondary'];
 export function Appearance({ theme = false }) {
+  const { can } = usePermissions();
+  const canEdit = can(theme ? P.ThemeEdit : P.BrandingEdit);
   const { client } = useCloudgate();
   const uploadImage = client.files.upload;
   const { settings, loading, error, save, reload } = useSettings();
@@ -49,7 +53,7 @@ export function Appearance({ theme = false }) {
     setForm((old) => ({ ...old, [key]: value }));
   };
   const upload = async (key, file) => {
-    if (!file || lock.current) return;
+    if (!canEdit || !can(P.MediaUpload) || !file || lock.current) return;
     lock.current = true;
     setBusy(true);
     setFailure(null);
@@ -104,7 +108,7 @@ export function Appearance({ theme = false }) {
       )}
       <Notice>{notice}</Notice>
       <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <fieldset disabled={busy || !!error} className="card min-w-0 space-y-5 p-5 sm:p-6">
+        <fieldset disabled={!canEdit || busy || !!error} className="card min-w-0 space-y-5 p-5 sm:p-6">
           {theme ? (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -235,7 +239,7 @@ export function Appearance({ theme = false }) {
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" className="btn-ghost" aria-label={`Choose existing ${label.toLowerCase()}`} onClick={() => setImagePicker({ key, label })}>
+                    <button type="button" className="btn-ghost" disabled={!can(P.MediaView)} aria-label={`Choose existing ${label.toLowerCase()}`} onClick={() => setImagePicker({ key, label })}>
                       <Images size={15} aria-hidden="true" />Choose existing
                     </button>
                     <label className="btn-ghost w-fit cursor-pointer">
@@ -246,6 +250,7 @@ export function Appearance({ theme = false }) {
                         className="sr-only"
                         accept="image/*"
                         aria-label={`Upload ${label.toLowerCase()}`}
+                        disabled={!can(P.MediaUpload)}
                         onChange={(e) => {
                           upload(key, e.target.files?.[0]);
                           e.target.value = '';

@@ -3,7 +3,9 @@ import { CloudgatePlatformError } from './transport.js';
 export function normalizeProfile(raw) {
   const r = raw?.result ?? raw;
   if (!r || typeof r !== 'object' || (r.id ?? r.Id) == null) throw new CloudgatePlatformError('Cloudgate returned an invalid profile.');
+  const permissions = r.rolePermissions ?? r.RolePermissions;
   return { id: r.id ?? r.Id, email: r.email ?? r.Email, name: r.name ?? r.Name, surname: r.surname ?? r.Surname, photoUrl: r.photoUrl ?? r.PhotoUrl ?? null, role: r.role ?? r.Role ?? null, isEmailConfirmed: r.isEmailConfirmed ?? r.IsEmailConfirmed ?? null,
+    rolePermissions: Array.isArray(permissions) ? permissions.filter(p => p && typeof (p.key ?? p.Key) === 'string').map(p => ({ key: p.key ?? p.Key, value: String(p.value ?? p.Value ?? '') })) : [],
     ...(typeof (r.promptForEmailVerification ?? r.PromptForEmailVerification) === 'boolean' ? { promptForEmailVerification: r.promptForEmailVerification ?? r.PromptForEmailVerification } : {}) };
 }
 export function getProfileDisplayName(profile) {

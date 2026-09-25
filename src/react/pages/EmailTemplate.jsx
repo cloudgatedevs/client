@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { RefreshCw, RotateCcw, Save } from 'lucide-react';
 import { EMAIL_TEMPLATE_FIELDS, EMAIL_TEMPLATE_MAX_LENGTH, validateEmailTemplate } from '../../platform/email-template.js';
@@ -8,6 +10,7 @@ import { DEFAULT_EMAIL_TEMPLATE, emailTemplatePreview } from './emailTemplatePre
 
 const editorValues = value => ({ ...value, templateHtml: value.templateHtml || DEFAULT_EMAIL_TEMPLATE });
 export function EmailTemplate() {
+  const { can } = usePermissions();
   const { client } = useCloudgate();
   const [saved, setSaved] = useState(null), [draft, setDraft] = useState({ templateEnabled: false, templateHtml: '' });
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
@@ -64,7 +67,7 @@ export function EmailTemplate() {
       <ErrorNote error={error} />
       <Notice>{notice}</Notice>
       <form className="card p-4 sm:p-5" onSubmit={save}>
-        <fieldset disabled={busy || !saved} className="min-w-0">
+        <fieldset disabled={!can(P.EmailTemplateEdit) || busy || !saved} className="min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <label className="flex min-h-10 cursor-pointer items-center gap-3 text-sm font-semibold">
               <input type="checkbox" role="switch" className="h-4 w-4 accent-accent" checked={draft.templateEnabled} aria-describedby={`${id}-help`} onChange={event => change({ templateEnabled: event.target.checked })} /> Use custom template
@@ -95,7 +98,7 @@ export function EmailTemplate() {
               <p className="mt-2 text-xs text-mist-dim">Preview of your draft. No email is sent. Email clients may render it differently.</p>
             </div>
           </div>
-          <p id={`${id}-fields`} className="mt-4 text-xs leading-relaxed text-mist-dim">Title and subTitle come from the message; recipient fields from the app user. Logo, tenant name and year come from Cloudgate. Unknown fields become empty. Use public image URLs. Changes require an active IdP account with the Admin role.</p>
+          <p id={`${id}-fields`} className="mt-4 text-xs leading-relaxed text-mist-dim">Title and subTitle come from the message; recipient fields from the app user. Logo, tenant name and year come from Cloudgate. Unknown fields become empty. Use public image URLs. Changes require the Edit email template permission.</p>
           <p id={`${id}-validation`} className="mt-2 text-sm text-red-400" role={problem ? 'alert' : undefined}>{problem}</p>
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-ink-700 pt-4">
             <button type="submit" className="btn-primary" disabled={!dirty || !!problem || busy}><Save size={14} />{busy ? 'Saving…' : 'Save changes'}</button>

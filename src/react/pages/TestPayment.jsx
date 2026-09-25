@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { useRef, useState } from 'react';
 import { BackofficeLink as Link } from '../components/BackofficeLink.jsx';
 import { ArrowUpRight, FlaskConical, RefreshCw } from 'lucide-react';
@@ -8,6 +10,7 @@ import { safePaymentUrl } from '../../platform/payments.js';
 import { amountInMinorUnits, paymentAmount } from './paymentDisplay.js';
 
 export function TestPayment() {
+  const { can } = usePermissions();
   const { client } = useCloudgate();
   const wallet = useAsync(() => client.payments.status({ environment: 'sbx' }), [client]);
   const [amount, setAmount] = useState('1.00'), [currency, setCurrency] = useState('');
@@ -36,7 +39,7 @@ export function TestPayment() {
       <h2 className="font-semibold">Test checkout created</h2><p className="text-sm text-mist-muted">{paymentAmount(checkout.grossAmount, checkout.currency)} · {checkout.description}</p>
       <div className="flex flex-wrap gap-2"><a className="btn-primary" href={safePaymentUrl(checkout.paymentUrl)} target="_blank" rel="noreferrer">Open sandbox checkout<ArrowUpRight size={16} /></a><button className="btn-ghost" onClick={() => { setCheckout(null); pending.current = null; }}>Create another test</button></div>
     </section> : <form className="card space-y-5 p-5" onSubmit={submit}>
-      <fieldset disabled={busy} className="space-y-5">
+      <fieldset disabled={!can(P.PaymentsTestCreate) || busy} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2"><Field label="Amount" id="test-payment-amount"><input id="test-payment-amount" className="input" inputMode="decimal" required value={amount} onChange={event => setAmount(event.target.value)} /></Field>
           <Field label="Currency" id="test-payment-currency"><input id="test-payment-currency" className="input uppercase" required maxLength={3} pattern="[A-Za-z]{3}" value={selectedCurrency} onChange={event => setCurrency(event.target.value.toUpperCase())} /></Field></div>
         <Field label="Description" id="test-payment-description"><input id="test-payment-description" className="input" required maxLength={512} value={description} onChange={event => setDescription(event.target.value)} /></Field>

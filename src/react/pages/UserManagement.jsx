@@ -1,3 +1,5 @@
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS as P } from '../../platform/backoffice-permissions.js';
 import { useCloudgate } from '../context.jsx';
 import { useRef, useState } from 'react';
 import { Eye, KeyRound, Pencil, Plus, Power, RefreshCw, Send, ShieldCheck, Trash2 } from 'lucide-react';
@@ -14,6 +16,7 @@ import { UserActivity, UserAvatar, UserContact, UserEmail, formatMetadata } from
 const SIZE = 25;
 const emptyUser = { email: '', name: '', surname: '', phoneNumber: '' };
 export function UserManagement() {
+  const { can } = usePermissions();
   const { client } = useCloudgate();
   const request = (action, body = {}) => client.request(`admin/users/${action}`, { body });
   const { currentUser } = useAuthContext();
@@ -128,7 +131,7 @@ export function UserManagement() {
         </button>
         <button
           className="btn-primary"
-          disabled={busy}
+          disabled={!can(P.UsersInvite) || busy}
           onClick={() => {
             setActionError(null);
             setInvitationResult(null);
@@ -205,10 +208,10 @@ export function UserManagement() {
               render: (u) => (
                 <div className="user-row-actions">
                   <button className="btn-ghost btn-sm" disabled={busy} onClick={() => edit(u)}>
-                    {protectedUser(u) ? <Eye size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
-                    {protectedUser(u) ? 'View' : 'Edit'}
+                    {(!can(P.UsersEdit) || protectedUser(u)) ? <Eye size={14} aria-hidden="true" /> : <Pencil size={14} aria-hidden="true" />}
+                    {(!can(P.UsersEdit) || protectedUser(u)) ? 'View' : 'Edit'}
                   </button>
-                  {String(u.id) !== String(currentUser?.user?.id) && <ActionMenu label={`Actions for ${u.email}`} disabled={busy} items={[
+                  {String(u.id) !== String(currentUser?.user?.id) && [P.UsersAssignRoles, P.UsersInvite, P.UsersResetPassword, P.UsersEdit, P.UsersDelete].some(can) && <ActionMenu label={`Actions for ${u.email}`} disabled={busy} items={[
                     { key: 'role', label: 'Change role', icon: ShieldCheck, onSelect: () => setRoleUser(u) },
                     ...(!protectedUser(u) ? [
                       { key: 'resend-invite', label: 'Send app invite', icon: Send, disabled: !u.isActive },
@@ -216,7 +219,7 @@ export function UserManagement() {
                       { key: 'set-active', label: u.isActive ? 'Disable user' : 'Enable user', icon: Power },
                       { key: 'delete', label: 'Delete user', icon: Trash2, danger: true },
                     ].map(item => ({ ...item, onSelect: () => { setActionError(null); setConfirmation({ user: u, action: item.key }); } })) : []),
-                  ]} />}
+                  ].filter(item => can({ role: P.UsersAssignRoles, 'resend-invite': P.UsersInvite, 'request-password-reset': P.UsersResetPassword, 'set-active': P.UsersEdit, delete: P.UsersDelete }[item.key]))} />}
                 </div>
               ),
             },
@@ -249,7 +252,7 @@ export function UserManagement() {
       >
         {form && (
           <UserEditor form={form} setForm={setForm} busy={busy} error={actionError}
-            readOnly={!!form.id && protectedUser(form)} result={invitationResult} onSubmit={save}
+            readOnly={form.id ? !can(P.UsersEdit) || protectedUser(form) : !can(P.UsersInvite)} result={invitationResult} onSubmit={save}
             onClose={() => { setForm(null); setActionError(null); setInvitationResult(null); }} onRetry={retryInvitation} />
         )}
       </Modal>

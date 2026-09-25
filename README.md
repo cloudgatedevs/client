@@ -87,7 +87,8 @@ await client.registration.get();
 It serializes rotating refresh requests, retries a 401 once, omits cookies, refuses redirects
 and supports abort/timeout options. Platform clients bind the configured tenant; query parameters
 cannot change it. Published `cg-analytics.json` / injected metadata chooses the web app and environment.
-Only the native `Admin` role opens the back office; server permissions remain authoritative.
+Back-office entry requires `backoffice.access`; page and action permissions are checked separately.
+Role names do not grant access. The server checks the current stored grants on every request.
 The optional `projectPath` scopes native workflow observability and the developer workspace to
 one controller. Leave it empty to browse all accessible controllers. No default controller is
 created or invoked. Admin/user/appearance/payment routes never use HMAC secrets.
@@ -98,7 +99,7 @@ created or invoked. Admin/user/appearance/payment routes never use HMAC secrets.
 History is scoped to the authenticated tenant and selected environment, with status filters
 and pagination. Test payment creates a sandbox checkout only, including when the app runs
 in production. Amounts are entered in currency units and sent as integer minor units.
-The native IdP Admin APIs recheck the user's current role and tenant; no ABP account link
+The native IdP Admin APIs recheck the user's current role permissions and tenant; no ABP account link
 or workflow is required. Configure providers and payouts in the Cloudgate hub.
 
 ### Creating and inviting app users
@@ -120,7 +121,7 @@ A Cloudgate server running in `Development` accepts only loopback/`.localhost` H
 and can invite users before the app is published. The form and new-user email identify this as a
 local development invitation: open it on the computer running the app. The protected invitation
 retains that origin through acceptance. Production servers continue to use the published URL;
-they never use this local override. Tenant ownership and the IdP Admin role are still required.
+they never use this local override. Tenant ownership and the app role’s invitation permission are still required.
 
 New users choose their own password through a single-use invitation that expires after three
 days. Accepting confirms their email and sends them to sign in to the invited app. Invitations
@@ -129,7 +130,7 @@ tenant-wide; inviting someone does not create a separate app-specific role or ac
 
 If email delivery fails, the form keeps the created user and offers **Retry invitation**.
 **Send app invite** in the user actions can resend an invitation without replacing an existing
-account's password or role. All administration requests use the current IdP Admin bearer.
+account's password or role. All administration requests use the current IdP bearer and applicable back-office grants.
 Deploy the backend invitation endpoints and the Hub's `/idp/:tenancyName/accept-invite` page
 together. No new database migration is required beyond the existing IdP account-security schema.
 
@@ -172,7 +173,7 @@ automatically; the full-page redirect flow retains a return link.
 Backend migration `AddIdpCloudgateAccountLink` and the hub `/account-link` route must be deployed
 before this feature is available. Register custom app return URLs in the tenant's IdP settings.
 The link is an optional identity association. All current back-office controls use the signed-in
-IdP user and its Admin role; linking, detaching or ABP permissions do not change that access.
+IdP user and its back-office permissions; linking, detaching or ABP permissions do not change that access.
 The back office never requests, stores or uses an ABP bearer token to perform these actions.
 
 ### Self-registration settings
@@ -182,8 +183,7 @@ This reads and updates the existing tenant-wide `App.Idp.AllowSelfRegistration` 
 all apps and environments. It does not change reCAPTCHA secrets, return URLs, token lifetimes or
 existing users. Administrators can still create accounts when public self-registration is disabled.
 
-The current IdP user must be an active Admin in the authenticated tenant. The server rechecks the
-current database account and role on reads and writes; an ABP link or ABP permissions are not required.
+The current IdP user must be active in the authenticated tenant and have the registration view/edit permission. The server rechecks the current database account and grants on reads and writes; no ABP link is required.
 Successful saves audit the IdP actor and old/new values. The ABP audit user column stays null to avoid
 attributing an IdP action to an unrelated ABP account. The UI disables editing if settings cannot load.
 
@@ -230,7 +230,7 @@ const template = await client.emailTemplate.get(); // { templateEnabled, templat
 await client.emailTemplate.update({ templateEnabled: true, templateHtml: '<h1>${title}</h1>${body}' });
 ```
 
-The current IdP Admin role is checked on every read and write, as for Registration.
+The current email-template view/edit permission is checked on every read and write, as for Registration.
 Deploy the updated backend endpoints first; account linking is optional. HTML is limited to
 262,144 characters; enabled templates require the exact `${body}` token. `EMAIL_TEMPLATE_FIELDS`,
 `EMAIL_TEMPLATE_MAX_LENGTH` and `validateEmailTemplate` are available from the platform entry point.
@@ -261,7 +261,7 @@ const receipts = await client.notificationAdmin.recipients({ environment: 'sbx',
 ```
 
 The SDK uses the existing native IdP `admin/notifications/send`, `history` and `recipients` APIs and
-the app-user search API. These require a current active IdP Admin; they do not require an ABP link.
+the app-user search API. These require the relevant current back-office permissions; they do not require an ABP link.
 No workflow or additional SDK package is involved. Sending requires an explicit environment;
 history defaults to the deployed app's environment when omitted. The personal inbox stays in its
 own app environment regardless of the administration selector. Broadcast recipients are snapshotted
@@ -555,7 +555,7 @@ const cloudgate = createCloudgateClient({
 
 ## Embedded developer workspace
 
-The React backoffice includes a compact **Developers** bar. An IdP Admin can open it after linking
+The React backoffice includes a compact **Developers** bar. An IdP user with `backoffice.developer.access` can open it after linking
 an ABP account for the same Cloudgate project in their profile. The SDK owns the bar, frame lifecycle,
 link recovery and `client.developerWorkspace.open({ returnUrl })` launch API. Pass `developerMode={false}`
 to `CloudgateBackoffice` to omit the bar. No additional SDK package is required.
@@ -573,7 +573,7 @@ in a focused session. Controller selection in developer mode does not change you
 Launching uses the IdP token to obtain a one-use code. Only the hub frame redeems it for a scoped ABP
 token; the parent app never receives that token. The ABP user's existing permissions apply and the
 server blocks project switching and account administration. Normal backoffice settings keep using
-IdP Admin permissions. Minimize preserves the frame and unsaved work; **End developer session** closes it.
+IdP back-office permissions. Minimize preserves the frame and unsaved work.
 Sessions last 20 minutes and must then be reopened. Save workflow changes before ending the session.
 
 The app URL must be in the tenant's IdP allowed redirect URLs. The configured hub origin must be
@@ -605,24 +605,49 @@ MIT © Cloudgate Devs
 ### IdP role management
 
 The shared back office includes **Administration → People & access → Roles** at `/roles`.
-An active IdP user with the `Admin` role can create, rename and delete custom tenant roles,
-edit their permission key/value pairs, and change other users' roles from Users.
-Built-in `User`, `Contributor` and `Admin` names cannot be renamed/deleted; their custom
-permissions remain editable. Roles assigned to users cannot be deleted, renames update
-existing assignments, and administrators cannot change their own role.
+The role editor has a searchable permission tree covering every current menu, with separate
+view and action grants. **Select all**, **Read only** and **Clear** provide starting points.
+An active app user with the appropriate role-management permissions can edit any role,
+including the built-in `User`, `Contributor` and `Admin` roles. Their names cannot be renamed
+or deleted. Assigned custom roles cannot be deleted, renames update existing assignments,
+and users cannot change their own role assignment.
+
+| Role | Initial back-office permissions |
+| --- | --- |
+| Admin | All 40 permissions |
+| Contributor | Read access plus media upload/delete, branding, theme and email-template editing |
+| User and custom roles | None |
+
+These are editable defaults, not role-name exceptions. A User with **Select all** has the same
+back-office capabilities as Admin. For a demo, edit User, choose **Read only**, then save:
+menus remain available while changes are disabled in the UI and denied by the APIs.
+Personal profile/account settings remain available to each signed-in user. Developer workspace
+access also requires a linked Cloudgate account and its existing ABP permissions.
+
+Use `canAccessBackoffice(profile)` for public-header links, and `usePermissions().can(key)` in
+React pages. `BACKOFFICE_PERMISSIONS` supplies named constants. Custom navigation entries may
+specify `permission`; custom application APIs must enforce their own corresponding grants.
+All back-office permissions require `backoffice.access`. Permissions are returned in
+`profile.rolePermissions`; a missing permission is denied, including on older servers.
 
 Use `platform.roles.list()`, `.create({ name, permissions })`, `.update({ id, name, permissions })`
 and `.delete(id)`, and `platform.users.setRole(userId, roleName)` for your own UI. For a built-in
 role with no backing row, omit `id` from `.update()` and use its canonical name. The server returns
 `{ items: [{ id, name, isDefault, userCount, permissions }] }` for the list and the saved role for
-create/update. Permission pairs are `{ key, value }` strings. The application interprets custom
-permissions; only the actual Admin role grants back-office access.
+create/update. Permission pairs are `{ key, value }` strings. Reserved `backoffice.*` keys
+control platform actions; other custom keys retain application-defined meanings.
+`platform.roles.options()` returns role names for users with role-assignment permission,
+without requiring permission to view the role configuration.
 
 These methods call the native `/api/idp/{tenancyName}/admin/roles/*` and
 `/api/idp/{tenancyName}/admin/users/set-role` endpoints with the current IdP bearer. They require
 the corresponding Cloudgate backend update, and never use an ABP token, a linked account,
-a workflow or a client-supplied tenant ID. Role changes apply across the tenant's applications;
-affected users may need to refresh their session/sign in again to receive a new role claim.
+a workflow or a client-supplied tenant ID. Role changes apply across the tenant's applications.
+API authorization uses current database grants immediately; refresh the app to update its menus.
+Deploy the backend and `20260925190000_Seed_Idp_Backoffice_Permissions` migration before the SDK.
+The migration adds missing built-in roles/permissions across existing tenants, preserves custom
+permissions and explicit denials, and does not overwrite subsequent role edits. New tenants are
+seeded during creation. Saving an empty permission list explicitly revokes all back-office access.
 
 ### Account menu and security
 
@@ -635,7 +660,7 @@ Deploy the matching Cloudgate account-security migration/backend and Hub sign-in
 ## Public website and back office
 
 Pass `basePath="/backoffice"` and `publicHome={<Home />}` to `CloudgateBackoffice` inside your
-BrowserRouter to serve an anonymous home page at `/` alongside the protected Admin workspace.
+BrowserRouter to serve an anonymous home page at `/` alongside the protected back office.
 Application routes and navigation remain relative to the back office (for example `/orders`
 opens `/backoffice/orders`). `useCloudgate().backofficePath()` builds links to shared screens.
 Existing integrations that omit these props retain their root-mounted workspace.
@@ -644,5 +669,5 @@ The shared Settings screen saves **Enable public website** per web app and envir
 Public bootstrap reads only appearance and registration policy without sending a bearer token;
 changes still use the existing IdP Admin endpoint with revision checks. Branding resets preserve
 the website setting. The public header can use `useSettings().allowSelfRegistration`,
-`client.signupUrl(returnUrl)`, and the authenticated profile's Admin role. Back-office sign-in
+`client.signupUrl(returnUrl)`, and `canAccessBackoffice(profile)`. Back-office sign-in
 returns to the requested deep link. Update the server to include `GET /api/idp/{tenant}/website`.

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCloudgate } from '../context.jsx';
-import { isAdminRole } from '../../platform/roles.js';
 import { useAsync, ErrorNote, Spinner } from '../components/ui.jsx';
 import { Modal, Field, Notice } from '../components/forms.jsx';
 
@@ -13,7 +12,7 @@ export function RoleAssignment({ user, onClose, onSaved }) {
   useEffect(() => { setRole(user?.role || ''); setError(null); }, [user]);
   const roles = useAsync(async () => {
     if (!user) return [];
-    const result = await client.roles.list();
+    const result = await client.roles.options();
     if (!Array.isArray(result?.items)) throw new Error('Unable to load available roles.');
     return result.items;
   }, [client, user]);
@@ -36,7 +35,7 @@ export function RoleAssignment({ user, onClose, onSaved }) {
         {!available && <option value={role} disabled>{role || 'Choose a role'}</option>}
         {(roles.data || []).map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
       </select></Field>
-      <Notice>{isAdminRole(role) ? 'Admin can manage users, roles and tenant settings from the back office.' : 'This role applies across the tenant’s applications. The user may need to sign in again for a new role claim.'}</Notice>
+      <Notice>This role applies across the tenant’s applications. Its permissions control back office access and actions.</Notice>
       <button className="btn-primary" disabled={busy || !available || role === user?.role}>{busy ? 'Saving…' : 'Save user role'}</button>
     </form>}
   </Modal>;

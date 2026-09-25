@@ -1,4 +1,4 @@
-/** Tenant-wide IdP registration policy, authorized by the caller's current IdP Admin role. */
+/** Tenant-wide IdP registration policy, authorized by the caller's current back-office permissions. */
 export function createRegistrationClient({ request }) {
   async function run(options) {
     const result = await request('admin/registration', options);
