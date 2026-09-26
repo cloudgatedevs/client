@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { EmptyState, WidgetSkeleton } from "./primitives.jsx";
 import { useAnimatedNumber } from './motion.js';
+import { TableExport } from './TableExport.jsx';
 import {
   chartDomain,
   chartNumber,
@@ -18,6 +19,9 @@ function ChartData({ data, series, xKey, formatValue }) {
   return (
     <details className="cgw-chart-data">
       <summary>View data table</summary>
+      <div className="cgw-export-toolbar"><TableExport label="Chart values" getRows={() => data}
+        columns={[{key:xKey,label:'Label'}, ...series.map(item => ({key:item.key,label:item.label,
+          exportValue:row => chartNumber(row[item.key])}))]} /></div>
       <div className="cgw-table-scroll">
         <table>
           <caption className="cgw-sr-only">Chart values</caption>

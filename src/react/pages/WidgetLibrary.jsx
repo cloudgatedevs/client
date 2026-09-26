@@ -16,6 +16,8 @@ import {
   Layers,
   MousePointer2,
   Palette,
+  Pause,
+  Play,
   RotateCcw,
   Search,
   Sparkles,
@@ -62,6 +64,19 @@ import {
   LAYOUT_PRESETS,
 } from "../../platform/appearance-model.js";
 import { useSettings } from "../settings/SettingsProvider.jsx";
+import { WidgetTypography } from './WidgetTypography.jsx';
+import { WidgetCharts } from './WidgetCharts.jsx';
+import { WidgetCards } from './WidgetCards.jsx';
+import { WidgetButtons } from './WidgetButtons.jsx';
+import { WidgetRichText } from './WidgetRichText.jsx';
+import { WidgetCalendar } from './WidgetCalendar.jsx';
+import { WidgetScrumBoard } from './WidgetScrumBoard.jsx';
+import { WidgetTabs } from './WidgetTabs.jsx';
+import { WidgetTimeline } from './WidgetTimeline.jsx';
+import { WidgetRadio } from './WidgetRadio.jsx';
+import { WidgetRowSelection } from './WidgetRowSelection.jsx';
+import { cardIndex } from '../../widgets/card-index.js';
+import { advancedChartIndex } from '../../widgets/chart-index.js';
 
 const revenue = [
   { label: "Apr", revenue: 14500, previous: 11200 },
@@ -94,6 +109,7 @@ const sampleRows = Array.from({ length: 137 }, (_, index) => ({
   owner: ["Morgan Ellis", "Alex Chen", "Jamie Brooks", "Sam Rivera"][index % 4],
   status: index % 5 === 0 ? "Paused" : "Active",
   amount: Math.round((37 + index * 13.4) * 100) / 100,
+  created: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
 }));
 const columns = [
   {
@@ -121,6 +137,7 @@ const columns = [
   {
     key: "amount",
     label: "Revenue",
+    exportFormat: '$#,##0.00',
     align: "right",
     render: (value) => (
       <span className="cgw-tabular">
@@ -200,7 +217,8 @@ function ValidationDemo({ state, advanced = false }) {
     {saved && <Alert tone="success" title="All fields are valid">This example doesn’t save data.</Alert>}
   </Form>;
 }
-function SearchSelectDemo({ state }) {
+function SelectDemo({ state }) {
+  const [period, setPeriod] = useState('30');
   const [local, setLocal] = useState(''), [remote, setRemote] = useState('');
   const [remoteOption, setRemoteOption] = useState();
   const [requests, setRequests] = useState(0), [saved, setSaved] = useState(''), [dialog, setDialog] = useState(false);
@@ -217,8 +235,15 @@ function SearchSelectDemo({ state }) {
       .map(row => ({value:row.id, label:row.name, description:row.owner}));
   }
   return <div className="cgw-stack">
+    <Card title="Standard select" description="A native dropdown for short lists, with familiar keyboard and mobile controls.">
+      <Select label="Reporting period" value={state === 'empty' ? '' : period} onChange={event => setPeriod(event.target.value)}
+        disabled={state === 'disabled'} placeholder="Choose a period…"
+        error={state === 'error' ? 'Choose a reporting period.' : undefined}
+        options={state === 'empty' ? [] : [{value:'7', label:'Last 7 days'}, {value:'30', label:'Last 30 days'}, {value:'90', label:'Last 90 days'}]}
+        hint="Reports update for the selected period." />
+    </Card>
     <div className="cgw-demo-chart-grid">
-      <Card title="Local options" description="Filter by name or description. Use the arrow keys to choose.">
+      <Card title="Searchable select" description="Filter local options by name or description. Use the arrow keys to choose.">
         <Form className="cgw-stack" onReset={() => {setLocal(''); setSaved('');}} onSubmit={data => setSaved(`Selected project ID: ${data.get('project')}`)}>
           <SearchSelect name="project" label="Project" value={local} onChange={setLocal} required disabled={state === 'disabled'}
             options={state === 'empty' ? [] : localOptions} placeholder="Search projects…" />
@@ -239,14 +264,56 @@ function SearchSelectDemo({ state }) {
     </Dialog>
   </div>;
 }
-function TableDemo({ state = "ready" }) {
+function ProjectTasks({ project, remote }) {
+  const [requests, setRequests] = useState(0);
+  const taskColumns = [
+    { key: "name", label: "Task" },
+    { key: "owner", label: "Assigned to" },
+    { key: "status", label: "Status", render: value => <Badge tone={value === "Done" ? "success" : "info"} dot>{value}</Badge> },
+  ];
+  const tasks = ["Discovery & planning", "Design direction", "Core implementation", "Content review", "Accessibility review", "Quality checks", "Launch preparation"]
+    .map((name, index) => ({ id: `${project.id}-task-${index + 1}`, name, owner: project.owner, status: index < 2 ? "Done" : "In progress" }));
+  async function loadTasks({ signal, ...query }) {
+    setRequests(count => count + 1);
+    await new Promise((resolve, reject) => {
+      const abort = () => { clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); };
+      const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, 420);
+      if (signal.aborted) abort(); else signal.addEventListener("abort", abort, { once: true });
+    });
+    const { queryRows } = await import("../widgets/table-model.js");
+    return queryRows(tasks, taskColumns, query);
+  }
+  return <>
+    <div className="cgw-subtable-heading">
+      <div><strong>Tasks · {project.name}</strong><p>Search, sort and page through this project’s tasks independently.</p></div>
+      <Badge>{remote ? `${requests} subtable requests` : "Local subtable"}</Badge>
+    </div>
+    <DataTable label={`${project.name} tasks`} columns={taskColumns} rows={remote ? undefined : tasks}
+      loadRows={remote ? loadTasks : undefined} pageSize={3} pageSizes={[3, 5, 10]} searchPlaceholder="Search tasks…" />
+  </>;
+}
+const tableIds = ['data-table', 'lazy-table', 'selection-table', 'row-selection-table', 'subtable', 'advanced-table'];
+const filterFields = [
+  {key:'name',label:'Project',type:'text'},
+  {key:'owner',label:'Owner',type:'text'},
+  {key:'status',label:'Status',type:'select',options:[{value:'Active',label:'Active'},{value:'Paused',label:'Paused'}]},
+  {key:'amount',label:'Revenue',type:'number'},
+  {key:'created',label:'Created',type:'date'},
+];
+function TableDemo({ state = "ready", variant = 'data-table' }) {
+  const isStatic = variant === 'data-table', selection = variant === 'selection-table', subtable = variant === 'subtable', advanced = variant === 'advanced-table';
+  const demoColumns = advanced ? [...columns, {key:'created',label:'Created'}] : columns;
   const [mode, setMode] = useState("pages"),
     [status, setStatus] = useState(""),
-    [remote, setRemote] = useState(true),
+    [remote, setRemote] = useState(!isStatic),
     [editing, setEditing] = useState(null),
     [data, setData] = useState(sampleRows),
     [revision, setRevision] = useState(0),
     [requests, setRequests] = useState(0);
+  async function updateSelected(ids, nextStatus) {
+    await new Promise(resolve => setTimeout(resolve, 450));
+    setData(previous => previous.map(row => ids.includes(row.id) ? { ...row, status: nextStatus } : row));
+  }
   async function loadRows({ signal, ...query }) {
     setRequests((count) => count + 1);
     await new Promise((resolve, reject) => {
@@ -267,12 +334,12 @@ function TableDemo({ state = "ready" }) {
         "The sample service is unavailable. Switch to Ready to try again.",
       );
     const { queryRows } = await import("../widgets/table-model.js");
-    return queryRows(state === "empty" || state === "loading" ? [] : data, columns, query);
+    return queryRows(state === "empty" || state === "loading" ? [] : data, demoColumns, query);
   }
   return (
     <div className="cgw-stack">
-      <div className="cgw-demo-controls">
-        <Select
+      {!isStatic && <div className="cgw-demo-controls">
+        {variant === 'lazy-table' && <Select
           label="Loading pattern"
           value={mode}
           onChange={(e) => setMode(e.target.value)}
@@ -281,18 +348,21 @@ function TableDemo({ state = "ready" }) {
             { value: "load-more", label: "Load more" },
             { value: "infinite", label: "Infinite scroll" },
           ]}
-        />
+        />}
         <Switch
           label="Simulated server"
           checked={remote}
           onChange={setRemote}
         />
         <span className="cgw-muted">{requests} page requests</span>
-      </div>
+      </div>}
+      {selection && <p className="cgw-muted">Select projects across pages, then activate or pause them together.</p>}
+      {subtable && <p className="cgw-muted">Expand a project to load its tasks. Each subtable has its own search, sorting and pages.</p>}
+      {advanced && <p className="cgw-muted">Combine text, status, revenue and date conditions. Filters also apply to Excel exports.</p>}
       <DataTable
         key={`${mode}-${remote}-${state}`}
         label="Sample projects"
-        columns={columns}
+        columns={demoColumns}
         rows={state === "empty" ? [] : data}
         loadRows={remote ? loadRows : undefined}
         pageSize={5}
@@ -300,7 +370,14 @@ function TableDemo({ state = "ready" }) {
         pagination={mode}
         filters={{ status }}
         reloadKey={revision}
-        selectable
+        selectable={selection}
+        filterFields={advanced ? filterFields : undefined}
+        getRowLabel={row => row.name}
+        renderExpandedRow={subtable ? row => <ProjectTasks project={row} remote={remote} /> : undefined}
+        bulkActions={[
+          { id: "activate", label: "Activate", icon: Play, onAction: ids => updateSelected(ids, "Active") },
+          { id: "pause", label: "Pause", icon: Pause, onAction: ids => updateSelected(ids, "Paused") },
+        ]}
         loading={state === "loading"}
         error={
           !remote && state === "error"
@@ -378,20 +455,27 @@ function TableDemo({ state = "ready" }) {
     </div>
   );
 }
-function WidgetDemo({ id, state }) {
+function WidgetDemo({ id, state, onChoose }) {
   const [value, setValue] = useState(64),
-    [enabled, setEnabled] = useState(true),
-    [tab, setTab] = useState("overview"),
+    [enabled, setEnabled] = useState({ sm: true, md: true, lg: true }),
     [open, setOpen] = useState(false),
     [notice, setNotice] = useState(true),
-    [text, setText] = useState("Northstar studio"),
-    [period, setPeriod] = useState("30");
+    [text, setText] = useState("Northstar studio");
   const disabled = state === "disabled",
     loading = state === "loading";
-  if (id === "data-table") return <TableDemo state={state} />;
+  if (id === 'row-selection-table') return <WidgetRowSelection state={state} />;
+  if (tableIds.includes(id)) return <TableDemo key={id} state={state} variant={id} />;
+  if (id==='wysiwyg') return <WidgetRichText key={state} state={state} />;
+  if (id==='calendar') return <WidgetCalendar key={state} state={state} />;
+  if (id==='scrum-board') return <WidgetScrumBoard key={state} state={state} />;
+  if (id==='timeline') return <WidgetTimeline key={state} state={state} />;
+  if (advancedChartIndex.some(chart=>chart.id===id)) return <WidgetCharts id={id} state={state} />;
+  if (id==='cards' || cardIndex.some(card=>card.id===id)) return <WidgetCards id={id} state={state} onChoose={onChoose} />;
   if (id === "icons") return <IconLibrary />;
+  if (id === "typography") return <WidgetTypography />;
   if (id === "code-editor") return <CodeEditorDemo state={state} />;
-  if (id === "search-select") return <SearchSelectDemo state={state} />;
+  if (id === "select") return <SelectDemo state={state} />;
+  if (id === "radio") return <WidgetRadio key={state} state={state} />;
   if (id === "input" || id === "form") return <ValidationDemo state={state} advanced={id === 'form'} />;
   if (["line-chart", "bar-chart", "donut-chart"].includes(id)) {
     if (state === "error")
@@ -490,62 +574,7 @@ function WidgetDemo({ id, state }) {
         </Card>
       );
     case "button":
-      return (
-        <div className="cgw-demo-buttons">
-          <div>
-            <Button
-              disabled={disabled}
-              loading={loading}
-              icon={Check}
-              onClick={() => setText("Changes saved")}
-            >
-              {text === "Changes saved" ? text : "Save changes"}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={disabled}
-              onClick={() => setText("Northstar studio")}
-            >
-              Secondary
-            </Button>
-            <Button variant="ghost" disabled={disabled}>
-              Quiet action
-            </Button>
-            <Button variant="danger" disabled={disabled}>
-              Delete
-            </Button>
-            <IconButton
-              label="Open details"
-              icon={ArrowUpRight}
-              disabled={disabled}
-            />
-          </div>
-          <div>
-            <Button size="sm">Small</Button>
-            <Button>Medium</Button>
-            <Button size="lg">Large</Button>
-            <Button loading>Saving changes</Button>
-          </div>
-        </div>
-      );
-    case "select":
-      return (
-        <div className="cgw-demo-form">
-          <Select
-            label="Reporting period"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            disabled={disabled}
-            error={state === "error" ? "Choose a reporting period." : undefined}
-            options={[
-              { value: "7", label: "Last 7 days" },
-              { value: "30", label: "Last 30 days" },
-              { value: "90", label: "Last 90 days" },
-            ]}
-            hint="Reports update for the selected period."
-          />
-        </div>
-      );
+      return <WidgetButtons state={state} />;
     case "slider":
       return (
         <div className="cgw-demo-form cgw-stack">
@@ -563,13 +592,25 @@ function WidgetDemo({ id, state }) {
     case "switch":
       return (
         <div className="cgw-demo-form cgw-stack">
-          <Switch
-            label="Email updates"
-            hint="Keep your team informed with a weekly summary."
-            checked={enabled}
-            onChange={setEnabled}
-            disabled={disabled}
-          />
+          <Card title="Switch sizes" description="Three sizes to fit your interface. Each switch works independently.">
+            <div className="cgw-stack">
+              {[
+                ["sm", "Small", "For compact toolbars and dense settings."],
+                ["md", "Medium · default", "For everyday forms and preferences."],
+                ["lg", "Large", "For prominent settings and larger layouts."],
+              ].map(([size, label, hint]) => (
+                <Switch
+                  key={size}
+                  size={size}
+                  label={label}
+                  hint={hint}
+                  checked={enabled[size]}
+                  onChange={(checked) => setEnabled((current) => ({ ...current, [size]: checked }))}
+                  disabled={disabled}
+                />
+              ))}
+            </div>
+          </Card>
           <Checkbox
             label="Include project activity"
             hint="A summary of changes and milestones."
@@ -584,49 +625,7 @@ function WidgetDemo({ id, state }) {
         </div>
       );
     case "tabs":
-      return (
-        <Tabs
-          label="Example workspace"
-          value={tab}
-          onChange={setTab}
-          items={[
-            {
-              value: "overview",
-              label: "Overview",
-              icon: LayoutDashboard,
-              content: (
-                <div className="cgw-demo-tab">
-                  <Sparkles size={24} />
-                  <strong>Your project at a glance</strong>
-                  <p>Move between sections using the arrow keys.</p>
-                </div>
-              ),
-            },
-            {
-              value: "activity",
-              label: "Activity",
-              count: 12,
-              content: (
-                <Alert title="You’re all caught up" tone="success">
-                  Your latest changes are ready for the team.
-                </Alert>
-              ),
-            },
-            {
-              value: "settings",
-              label: "Settings",
-              disabled,
-              content: (
-                <Switch
-                  label="Activity notifications"
-                  checked={enabled}
-                  onChange={setEnabled}
-                />
-              ),
-            },
-          ]}
-        />
-      );
+      return <WidgetTabs key={state} state={state} />;
     case "dialog":
       return (
         <div className="cgw-demo-dialog">
@@ -925,20 +924,22 @@ export function WidgetLibrary() {
     theme === "dark" ||
     (theme === "app" && (appearance.theme_mode === 'dark' || (appearance.theme_mode === 'system' && systemDark)));
   const previewStyle = paletteVariables({ ...appearance, ...previewColors }, isDark);
-  const availableStates = selected === "search-select" ? ["ready", "empty", "error", "disabled"] : selected === "code-editor" ? ["ready", "loading", "empty", "disabled"] : [
-    "data-table",
+  const availableStates = ['wysiwyg','calendar','scrum-board'].includes(selected) ? ['ready','loading','empty','error','disabled','readonly'] : selected==='timeline' || cardIndex.some(card=>card.id===selected) ? ['ready','loading','empty','error','disabled'] : selected === "select" ? ["ready", "empty", "error", "disabled"] : selected === "code-editor" ? ["ready", "loading", "empty", "disabled"] : [
+    ...tableIds,
+    ...advancedChartIndex.map(chart=>chart.id),
     "line-chart",
     "bar-chart",
     "donut-chart",
   ].includes(selected)
     ? ["ready", "loading", "empty", "error"]
-    : ["input", "select", "form"].includes(selected)
+    : ["input", "radio", "form"].includes(selected)
       ? ["ready", "disabled", "error"]
       : ["button", "metric-card", "card"].includes(selected)
         ? ["ready", "loading", ...(selected === "button" ? ["disabled"] : [])]
         : ["slider", "switch", "tabs"].includes(selected)
           ? ["ready", "disabled"]
           : ["ready"];
+  if (selected === 'search-select') return <Navigate to={backofficePath('/widgets/select')} replace />;
   if (
     !widget &&
     !recipe &&
@@ -1033,7 +1034,7 @@ export function WidgetLibrary() {
                     ]}
                   />
                   <div className="cgw-widget-options">
-                  {tab === 'preview' && state === 'ready' && ['metric-card', 'line-chart', 'bar-chart', 'donut-chart', 'progress'].includes(selected) &&
+                  {tab === 'preview' && state === 'ready' && ['metric-card', 'line-chart', 'bar-chart', 'donut-chart', 'progress', ...advancedChartIndex.map(chart=>chart.id), ...cardIndex.map(card=>card.id)].includes(selected) &&
                     <Button variant="ghost" size="sm" icon={RotateCcw} onClick={() => setMotionRun(run => run + 1)}>Replay animation</Button>}
                   {tab === "preview" && availableStates.length > 1 && (
                     <Select
@@ -1054,6 +1055,7 @@ export function WidgetLibrary() {
                       key={`${widget.id}-${motionRun}`}
                       id={widget.id}
                       state={state}
+                      onChoose={choose}
                     />
                   </div>
                 )}

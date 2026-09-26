@@ -43,6 +43,10 @@ test('palette text, status and button labels remain readable on all surfaces in 
       }
     }
     assert.ok(contrastRatio(channels('--accent'), channels('--accent-fg')) >= 4.5, `${id} button label`);
+    for (const tone of ['success','warning','danger','info']) {
+      assert.ok(contrastRatio(channels(`--cgw-${tone}`), channels(`--cgw-${tone}-fg`)) >= 4.5,
+        `${id} ${dark} solid ${tone} button label`);
+    }
     assert.equal(validateSettings({ ...DEFAULT_SETTINGS, ...colors }), null);
   }
 });

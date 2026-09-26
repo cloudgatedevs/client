@@ -8,14 +8,15 @@ import { BACKOFFICE_PERMISSIONS as P } from '../src/platform/backoffice-permissi
 import { widgets } from '../src/widgets/catalog.js';
 
 test('widget sidebar covers the catalogue with scoped links, nested search and active breadcrumbs', () => {
-  const links = WIDGET_NAV.children.flatMap(item => item.children || [item]);
+  const flatten = items => items.flatMap(item => item.children ? flatten(item.children) : [item]);
+  const links = flatten(WIDGET_NAV.children);
   for (const widget of widgets) {
     const item = links.find(item => item.to === `/widgets/${widget.id}`);
     assert.equal(item?.label, widget.name);
     assert.equal(item?.permission, P.WidgetsView);
   }
   const scoped = scopeNavigation([WIDGET_NAV], '/backoffice');
-  assert.deepEqual(navigationTrail('/backoffice/widgets/line-chart', scoped).map(item => item.label), ['Widget library', 'Charts', 'Line chart']);
+  assert.deepEqual(navigationTrail('/backoffice/widgets/line-chart', scoped).map(item => item.label), ['Widget library', 'Charts', 'Essentials', 'Line chart']);
   assert.deepEqual(navigationTrail('/backoffice/widgets', scoped).map(item => item.label), ['Widget library', 'Overview']);
   assert.equal(navigationTrail('/backoffice/widgets/recipes/dashboard', scoped).at(-1).label, 'Recipes');
   const found = filterNavigation(scoped, 'widget pagination');

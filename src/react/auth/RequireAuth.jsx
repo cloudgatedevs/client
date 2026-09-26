@@ -4,7 +4,7 @@ import { useCloudgate } from '../context.jsx';
 import { useAuthContext } from './useAuthContext';
 import { ScreenLoader } from '../components/ScreenLoader.jsx';
 
-const RequireAuth = () => {
+const RequireAuth = ({ children }) => {
   const { client } = useCloudgate();
   const cloudgateAuth = client.auth;
   const redirectToLogin = client.login;
@@ -40,7 +40,7 @@ const RequireAuth = () => {
   </section></div>;
   if (!currentUser) return <ScreenLoader />;
 
-  return <Outlet />;
+  return children ?? <Outlet />;
 };
 
 export { RequireAuth };

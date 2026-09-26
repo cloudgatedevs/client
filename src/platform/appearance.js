@@ -26,6 +26,7 @@ export function createAppearanceClient({ request, publicRequest, webAppId, envir
       const response = await publicRequest(`website?${new URLSearchParams({ webAppId: scope.webAppId, environment: scope.environment })}`, { method: 'GET' });
       if (typeof response?.allowSelfRegistration !== 'boolean' || !response.values ||
           Array.isArray(response.values) || !['true', 'false'].includes(response.values.enable_public_website) ||
+          (Object.hasOwn(response.values, 'require_public_website_login') && !['true', 'false'].includes(response.values.require_public_website_login)) ||
           typeof response.revision !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(response.revision))
         throw new Error('The website settings could not be loaded. Update the Cloudgate server and try again.');
       return { values: normalizeSettings(response.values), revision: response.revision, allowSelfRegistration: response.allowSelfRegistration };

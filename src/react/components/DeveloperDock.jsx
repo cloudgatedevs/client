@@ -107,7 +107,7 @@ export function DeveloperDock() {
               <p>Developer mode uses the permissions of your linked Cloudgate account. Manage the link in your profile.</p>
               <div><button className="btn-primary" onClick={start}>Reconnect</button><button className="btn-ghost" onClick={() => { end(); navigate(backofficePath('/profile')); }}>Open my profile</button></div></div>}
             {launch && <iframe ref={frame} title="Cloudgate developer workspace" src={launch.frameUrl}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />}
+              allow="microphone" sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer" />}
           </div>
         </section>
       </>, document.body)}

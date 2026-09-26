@@ -2,6 +2,7 @@ import { forwardRef, useId, useRef, useState, useLayoutEffect } from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { useAnimatedNumber } from './motion.js';
 import { useFieldValidation } from './Form.jsx';
+import { buttonClassName } from './button-model.js';
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -17,10 +18,13 @@ const cx = (...values) => values.filter(Boolean).join(" ");
 export const Button = forwardRef(function Button(
   {
     variant = "primary",
+    appearance,
     size = "md",
+    fullWidth = false,
     loading = false,
     disabled,
     icon: Icon,
+    iconPosition = 'start',
     children,
     className,
     type = "button",
@@ -28,6 +32,8 @@ export const Button = forwardRef(function Button(
   },
   ref,
 ) {
+  const adornment = loading ? <LoaderCircle className="cgw-spin" size={16} aria-hidden="true" />
+    : Icon && <Icon size={16} aria-hidden="true" />;
   return (
     <button
       {...props}
@@ -35,19 +41,11 @@ export const Button = forwardRef(function Button(
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cx(
-        "cgw-button",
-        `cgw-button--${variant}`,
-        `cgw-button--${size}`,
-        className,
-      )}
+      className={buttonClassName({variant,appearance,size,fullWidth,className})}
     >
-      {loading ? (
-        <LoaderCircle className="cgw-spin" size={16} aria-hidden="true" />
-      ) : (
-        Icon && <Icon size={16} aria-hidden="true" />
-      )}
+      {iconPosition !== 'end' && adornment}
       {children}
+      {iconPosition === 'end' && adornment}
     </button>
   );
 });
@@ -312,6 +310,8 @@ export function Switch({
   checked,
   onChange,
   disabled,
+  size = "md",
+  className,
   id: suppliedId,
   ...props
 }) {
@@ -327,14 +327,14 @@ export function Switch({
         {...props}
         id={id}
         type="button"
-        className="cgw-switch"
+        className={cx("cgw-switch", `cgw-switch--${size}`, className)}
         role="switch"
         aria-checked={checked}
         aria-describedby={hint ? `${id}-help` : undefined}
         disabled={disabled}
         onClick={() => onChange?.(!checked)}
       >
-        <span />
+        <span className="cgw-switch-thumb" />
       </button>
     </div>
   );
@@ -384,89 +384,7 @@ export function Slider({
     </div>
   );
 }
-export function Tabs({
-  label = "Sections",
-  items,
-  value,
-  onChange,
-  className,
-}) {
-  const hasPanels = items.some((item) => item.content !== undefined);
-  const id = useId(),
-    refs = useRef([]);
-  function onKeyDown(event, index) {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-    event.preventDefault();
-    const available = items
-      .map((item, i) => (!item.disabled ? i : -1))
-      .filter((i) => i >= 0);
-    if (!available.length) return;
-    const position = available.indexOf(index);
-    const next =
-      event.key === "Home"
-        ? available[0]
-        : event.key === "End"
-          ? available.at(-1)
-          : available[
-              (position +
-                (event.key === "ArrowRight" ? 1 : -1) +
-                available.length) %
-                available.length
-            ];
-    refs.current[next]?.focus();
-    onChange(items[next].value);
-  }
-  return (
-    <div className={cx("cgw-tabs", className)}>
-      <div
-        className="cgw-tablist"
-        role={hasPanels ? "tablist" : "group"}
-        aria-label={label}
-      >
-        {items.map((item, index) => (
-          <button
-            key={item.value}
-            ref={(node) => {
-              refs.current[index] = node;
-            }}
-            type="button"
-            role={hasPanels ? "tab" : undefined}
-            id={`${id}-tab-${index}`}
-            aria-selected={hasPanels ? value === item.value : undefined}
-            aria-pressed={!hasPanels ? value === item.value : undefined}
-            aria-controls={
-              item.content !== undefined ? `${id}-panel-${index}` : undefined
-            }
-            tabIndex={value === item.value ? 0 : -1}
-            disabled={item.disabled}
-            onClick={() => onChange(item.value)}
-            onKeyDown={(e) => onKeyDown(e, index)}
-          >
-            {item.icon && <item.icon size={15} aria-hidden="true" />}
-            {item.label}
-            {item.count != null && <span>{item.count}</span>}
-          </button>
-        ))}
-      </div>
-      {items.map(
-        (item, index) =>
-          item.content !== undefined && (
-            <div
-              key={item.value}
-              role="tabpanel"
-              id={`${id}-panel-${index}`}
-              aria-labelledby={`${id}-tab-${index}`}
-              hidden={value !== item.value}
-              tabIndex={0}
-              className="cgw-tabpanel"
-            >
-              {item.content}
-            </div>
-          ),
-      )}
-    </div>
-  );
-}
+export {Tabs} from './Tabs.jsx';
 export function Alert({ title, children, tone = "info", action, onDismiss }) {
   return (
     <div
@@ -561,6 +479,7 @@ export function Progress({
 export function Dialog({
   open,
   onClose,
+  onCloseAutoFocus,
   title,
   description,
   children,
@@ -588,9 +507,11 @@ export function Dialog({
             returnFocus.current = document.activeElement;
           }}
           onCloseAutoFocus={(event) => {
+            onCloseAutoFocus?.(event);
+            const handled = event.defaultPrevented;
             event.preventDefault();
             setLast(null);
-            if (returnFocus.current?.isConnected) returnFocus.current.focus();
+            if (!handled && returnFocus.current?.isConnected) returnFocus.current.focus();
           }}
           onEscapeKeyDown={(e) => {
             if (!onClose) e.preventDefault();

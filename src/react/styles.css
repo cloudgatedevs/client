@@ -11,6 +11,9 @@
 @import './account.css';
 @import './popover.css';
 @import './widgets/widgets.css';
+@import './widgets/rich-text.css';
+@import './widgets/calendar.css';
+@import './widgets/scrum-board.css';
 @import './widgets/library.css';
 @import './layout.css';
 @import './palettes.css';

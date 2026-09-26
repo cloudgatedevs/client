@@ -1,7 +1,8 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, Outlet } from 'react-router-dom';
 import { useCloudgate } from './context.jsx';
 import { useSettings } from './settings/SettingsProvider.jsx';
 import { ScreenLoader } from './components/ScreenLoader.jsx';
+import { RequireAuth } from './auth/RequireAuth.jsx';
 
 export function PublicHomeGate({ children }) {
   const { backofficePath } = useCloudgate();
@@ -12,5 +13,6 @@ export function PublicHomeGate({ children }) {
     <div className="flex gap-3"><button className="btn-primary" onClick={reload}>Try again</button><Link className="btn-ghost" to={backofficePath('/')}>Back office</Link></div>
   </section></div>;
   if (settings.enable_public_website !== 'true') return <Navigate to={backofficePath('/')} replace />;
-  return children;
+  const content = children ?? <Outlet />;
+  return settings.require_public_website_login === 'true' ? <RequireAuth>{content}</RequireAuth> : content;
 }

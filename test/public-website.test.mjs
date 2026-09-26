@@ -30,7 +30,11 @@ test('public settings use the current app and environment and do not fall back o
     } });
   const loaded = await client.getPublic();
   assert.equal(loaded.values.enable_public_website, 'false'); assert.equal(loaded.allowSelfRegistration, true);
+  assert.equal(loaded.values.require_public_website_login, 'false', 'Older servers and existing sites keep anonymous access');
+  response = { ...response, values: { ...response.values, require_public_website_login: 'true' } };
+  assert.equal((await client.getPublic()).values.require_public_website_login, 'true');
   for (const invalid of [null, {}, { ...response, allowSelfRegistration: 'true' },
+    ...[true, null, '', 'yes'].map(value => ({ ...response, values: { ...response.values, require_public_website_login: value } })),
     { ...response, values: { enable_public_website: true } }, { ...response, revision: 'invalid' }]) {
     response = invalid;
     await assert.rejects(client.getPublic(), /website settings could not be loaded/);

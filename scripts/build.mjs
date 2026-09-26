@@ -6,7 +6,9 @@ import preset from '../tailwind.preset.js';
 import { readFile, writeFile, mkdir, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createWidgetManifest } from '../src/widgets/manifest.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+await writeFile(path.join(root, 'src/widgets/picker-manifest.json'), JSON.stringify(createWidgetManifest(), null, 2) + '\n');
 const output = path.resolve(root, 'dist/react');
 if (!output.startsWith(root + path.sep) || path.basename(output) !== 'react') throw new Error('Invalid build output');
 await rm(output, { force: true, recursive: true });
@@ -35,7 +37,7 @@ await build({
   } }],
 });
 const integrationStyles = (await readdir(path.join(root, 'src/react/integrations'))).filter(name => name.endsWith('.css')).map(name => `integrations/${name}`);
-const input = (await Promise.all(['index.css', 'theme.css', 'polish.css', 'users.css', 'media.css', 'account.css', 'popover.css', 'widgets/widgets.css', 'widgets/library.css', ...integrationStyles, 'layout.css', 'palettes.css'].map(name => readFile(path.join(root, 'src/react', name), 'utf8')))).join('\n');
+const input = (await Promise.all(['index.css', 'theme.css', 'polish.css', 'users.css', 'media.css', 'account.css', 'popover.css', 'widgets/widgets.css', 'widgets/rich-text.css', 'widgets/calendar.css', 'widgets/scrum-board.css', 'widgets/library.css', ...integrationStyles, 'layout.css', 'palettes.css'].map(name => readFile(path.join(root, 'src/react', name), 'utf8')))).join('\n');
 const css = await postcss([tailwind({ ...preset, content: [path.join(root, 'src/**/*.{js,jsx}').replaceAll('\\', '/')] }), autoprefixer()]).process(input, { from: undefined });
 await writeFile(path.join(output, 'styles.css'), css.css);
 console.log('Built React entry, lazy feature chunks and shared CSS.');

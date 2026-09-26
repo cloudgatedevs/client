@@ -5,6 +5,7 @@ export * from './theme-palette.js';
 
 export const DEFAULT_SETTINGS = Object.freeze({
   enable_public_website: 'true',
+  require_public_website_login: 'false',
   app_name: 'Admin',
   app_tagline: 'Back office',
   app_description: '',
@@ -60,6 +61,8 @@ export function normalizeSettings(values = {}) {
   result.theme_density = normalizeDensity(result.theme_density);
   if (!['true', 'false'].includes(result.enable_public_website))
     result.enable_public_website = 'true';
+  if (!['true', 'false'].includes(result.require_public_website_login))
+    result.require_public_website_login = 'false';
   for (const key of PALETTE_COLOR_KEYS)
     if (!isHex(result[key])) result[key] = DEFAULT_SETTINGS[key];
   for (const key of ['app_logo_url', 'app_icon_url', 'app_url'])

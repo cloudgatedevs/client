@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -6,6 +6,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Columns3,
+  Circle,
+  CircleDot,
   LoaderCircle,
   RefreshCw,
   Search,
@@ -29,6 +31,10 @@ import {
   tableValue,
   validatePage,
 } from "./table-model.js";
+import { TableExport } from './TableExport.jsx';
+import { collectExportRows } from './table-export.js';
+import { FilterChips, TableFilters } from './TableFilters.jsx';
+import { EMPTY_ADVANCED_FILTERS } from './filter-model.js';
 
 const EMPTY_ROWS = [],
   EMPTY_FILTERS = {};
@@ -47,11 +53,29 @@ export function DataTable({
   searchable = true,
   debounceMs = 300,
   filters = EMPTY_FILTERS,
+  filterFields = EMPTY_ROWS,
+  advancedFilters: controlledAdvancedFilters,
+  defaultAdvancedFilters = EMPTY_ADVANCED_FILTERS,
+  onAdvancedFiltersChange,
   reloadKey,
   pagination = "pages",
   selectable = false,
   selectedIds,
   onSelectionChange,
+  rowSelectable = false,
+  activeRowId: controlledActiveRowId,
+  defaultActiveRowId = null,
+  onActiveRowChange,
+  getRowCanActivate,
+  bulkActions = EMPTY_ROWS,
+  exportable = true,
+  exportFileName,
+  loadExportRows,
+  renderExpandedRow,
+  getRowCanExpand,
+  getRowLabel = getRowId,
+  expandedIds,
+  onExpandedChange,
   toolbar,
   rowActions,
   emptyTitle = "No records found",
@@ -69,9 +93,26 @@ export function DataTable({
     sort: initialSort,
   });
   const [search, setSearch] = useState(""),
+    [internalAdvancedFilters, setInternalAdvancedFilters] = useState(defaultAdvancedFilters),
     [revision, setRevision] = useState(0),
     [hidden, setHidden] = useState([]),
-    [selection, setSelection] = useState([]);
+    [selection, setSelection] = useState([]),
+    [internalActiveRowId, setInternalActiveRowId] = useState(defaultActiveRowId),
+    [expansion, setExpansion] = useState([]),
+    [pendingAction, setPendingAction] = useState(null),
+    [actionError, setActionError] = useState(null),
+    [actionNotice, setActionNotice] = useState("");
+  const tableId = useId();
+  const rowButtons = useRef(new Map());
+  const activeRowId = controlledActiveRowId === undefined ? internalActiveRowId : controlledActiveRowId;
+  const actionRun = useRef(null),
+    activeIdsRef = useRef([]),
+    selectedRowsRef = useRef(new Map()),
+    selectionChangeRef = useRef(onSelectionChange);
+  selectionChangeRef.current = onSelectionChange;
+  useEffect(() => () => {
+    actionRun.current = null;
+  }, []);
   const [remote, setRemote] = useState({
     rows: [],
     total: 0,
@@ -93,7 +134,12 @@ export function DataTable({
     previousFilters = useRef(filtersKey),
     previousReload = useRef(reloadKey),
     previousMode = useRef(pagination);
+  const advancedFilters = controlledAdvancedFilters ?? internalAdvancedFilters;
+  const advancedKey = JSON.stringify(advancedFilters), previousAdvanced = useRef(advancedKey);
+  function changeAdvancedFilters(next) { setInternalAdvancedFilters(next); onAdvancedFiltersChange?.(next); }
   const activeIds = selectedIds ?? selection;
+  activeIdsRef.current = activeIds;
+  const activeExpandedIds = expandedIds ?? expansion;
   useEffect(() => {
     const timer = setTimeout(
       () =>
@@ -110,10 +156,12 @@ export function DataTable({
   useEffect(() => {
     if (
       previousFilters.current !== filtersKey ||
+      previousAdvanced.current !== advancedKey ||
       previousReload.current !== reloadKey ||
       previousMode.current !== pagination
     ) {
       previousFilters.current = filtersKey;
+      previousAdvanced.current = advancedKey;
       previousReload.current = reloadKey;
       previousMode.current = pagination;
       if (query.page !== 1) {
@@ -126,6 +174,7 @@ export function DataTable({
     const args = {
       ...query,
       filters: JSON.parse(filtersKey),
+      advancedFilters: JSON.parse(advancedKey),
       signal: controller.signal,
     };
     queryChangeRef.current?.(args);
@@ -167,6 +216,7 @@ export function DataTable({
   }, [
     query,
     filtersKey,
+    advancedKey,
     reloadKey,
     revision,
     isRemote,
@@ -178,11 +228,12 @@ export function DataTable({
       queryRows(rows, columns, {
         ...query,
         filters,
+        advancedFilters,
         ...(cumulative
           ? { page: 1, pageSize: query.page * query.pageSize }
           : {}),
       }),
-    [rows, columns, query, filtersKey, cumulative],
+    [rows, columns, query, filtersKey, advancedKey, cumulative],
   );
   useEffect(() => {
     if (!isRemote && !cumulative && local.page !== query.page)
@@ -221,9 +272,89 @@ export function DataTable({
   const ids = result.rows.map(getRowId),
     allSelected = ids.length > 0 && ids.every((id) => activeIds.includes(id)),
     someSelected = ids.some((id) => activeIds.includes(id));
+  const canActivate = row => rowSelectable && !loading && !error && pendingAction === null && (getRowCanActivate?.(row) ?? true);
+  const activatableRows = result.rows.filter(canActivate);
+  const tabStopRowId = activatableRows.some(row => getRowId(row) === activeRowId)
+    ? activeRowId : activatableRows.length ? getRowId(activatableRows[0]) : null;
+  function activateRow(row) {
+    const id = getRowId(row);
+    if (!canActivate(row) || id === activeRowId) return;
+    setInternalActiveRowId(id);
+    onActiveRowChange?.(id, row);
+  }
+  function clickRow(event, row) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    // Embedded controls own their interactions, including expandable/nested content.
+    const control = event.target.closest('a, button, input, select, textarea, label, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="combobox"], [role="menuitem"], [tabindex], [data-row-selection-ignore]');
+    if (control && event.currentTarget.contains(control)) return;
+    const selection = event.currentTarget.ownerDocument.getSelection?.();
+    if (selection?.toString() && event.currentTarget.contains(selection.anchorNode)) return;
+    activateRow(row);
+    if (canActivate(row)) rowButtons.current.get(getRowId(row))?.focus({preventScroll:true});
+  }
+  function moveActiveRow(event, row) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !canActivate(row)) return;
+    const index = activatableRows.findIndex(item => getRowId(item) === getRowId(row));
+    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? activatableRows.length - 1
+      : event.key === 'ArrowDown' ? Math.min(index + 1, activatableRows.length - 1)
+      : event.key === 'ArrowUp' ? Math.max(index - 1, 0) : -1;
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    const next = activatableRows[nextIndex];
+    rowButtons.current.get(getRowId(next))?.focus();
+    activateRow(next);
+  }
+  useEffect(() => {
+    const cache = new Map([...selectedRowsRef.current].filter(([id]) => activeIds.includes(id)));
+    for (const row of result.rows) if (activeIds.includes(getRowId(row))) cache.set(getRowId(row), row);
+    selectedRowsRef.current = cache;
+  }, [result.rows, activeIds, getRowId]);
+  function getExportRows({ scope, signal, onProgress }) {
+    return collectExportRows({ scope, signal, onProgress, rows, visibleRows: result.rows,
+      selectedIds: [...activeIds], selectedRows: new Map(selectedRowsRef.current), columns,
+      query: { ...query, filters: JSON.parse(filtersKey), advancedFilters: JSON.parse(advancedKey) }, loadRows, loadExportRows, getRowId });
+  }
   function select(next) {
+    if (actionRun.current) return;
+    setActionError(null);
+    setActionNotice("");
     setSelection(next);
     onSelectionChange?.(next);
+  }
+  function toggleExpanded(id) {
+    const next = activeExpandedIds.includes(id)
+      ? activeExpandedIds.filter((value) => value !== id)
+      : [...activeExpandedIds, id];
+    setExpansion(next);
+    onExpandedChange?.(next);
+  }
+  async function runBulkAction(action) {
+    if (actionRun.current || !activeIds.length || action.disabled) return;
+    const run = {},
+      submittedIds = [...activeIds];
+    actionRun.current = run;
+    setPendingAction(action.id);
+    setActionError(null);
+    setActionNotice("");
+    try {
+      await action.onAction(submittedIds);
+      if (actionRun.current !== run) return;
+      if (action.clearSelectionOnSuccess !== false) {
+        // A controlled selection may change while the request is pending.
+        const next = activeIdsRef.current.filter((id) => !submittedIds.includes(id));
+        setSelection(next);
+        selectionChangeRef.current?.(next);
+      }
+      setActionNotice(`${action.label} completed for ${submittedIds.length} selected ${submittedIds.length === 1 ? "row" : "rows"}.`);
+      if (action.refreshOnSuccess !== false) refresh();
+    } catch (error) {
+      if (actionRun.current === run) setActionError(error?.message || String(error));
+    } finally {
+      if (actionRun.current === run) {
+        actionRun.current = null;
+        setPendingAction(null);
+      }
+    }
   }
   function refresh() {
     if (cumulative && query.page > 1)
@@ -244,7 +375,7 @@ export function DataTable({
     }));
   }
   const columnCount =
-    visibleColumns.length + Number(selectable) + Number(!!rowActions);
+    visibleColumns.length + Number(selectable) + Number(rowSelectable) + Number(!!rowActions) + Number(!!renderExpandedRow);
   return (
     <section
       className={`cgw-table ${className}`}
@@ -264,8 +395,17 @@ export function DataTable({
             />
           )}
           {toolbar}
+          {filterFields.length > 0 && <TableFilters fields={filterFields} value={advancedFilters} onChange={changeAdvancedFilters} />}
         </div>
         <div className="cgw-row">
+          {exportable && <TableExport label={label} columns={visibleColumns} fileName={exportFileName}
+            hasSubtables={!!renderExpandedRow}
+            disabled={loading || !!error || pendingAction !== null} getRows={getExportRows}
+            scopes={[
+              ...(selectable && activeIds.length ? [{ value: 'selected', label: `Selected rows (${activeIds.length})` }] : []),
+              { value: 'all', label: `All filtered results (${result.total.toLocaleString()})` },
+              { value: 'page', label: `${cumulative ? 'Loaded rows' : 'Current page'} (${result.rows.length})` },
+            ]} />}
           <details className="cgw-columns">
             <summary title="Choose columns">
               <Columns3 size={16} />
@@ -302,14 +442,27 @@ export function DataTable({
         </div>
       </div>
       <div className="cgw-table-loading-track" data-loading={loading || undefined} aria-hidden="true"><span /></div>
+      <FilterChips fields={filterFields} value={advancedFilters} onChange={changeAdvancedFilters} />
       {selectable && activeIds.length > 0 && (
         <div className="cgw-selection-bar">
-          <span>{activeIds.length} selected</span>
-          <Button size="sm" variant="ghost" icon={X} onClick={() => select([])}>
-            Clear selection
-          </Button>
+          <span className="cgw-selection-count" role="status">
+            <strong>{activeIds.length} selected</strong>
+            {activeIds.some((id) => !ids.includes(id)) && <span className="cgw-muted">Includes rows outside this view</span>}
+          </span>
+          <div className="cgw-selection-actions" role="group" aria-label="Actions for selected rows" aria-busy={pendingAction !== null}>
+            {bulkActions.map((action) => <Button key={action.id} size="sm" variant={action.variant || "secondary"}
+              icon={action.icon} disabled={pendingAction !== null || action.disabled}
+              loading={pendingAction === action.id} onClick={() => runBulkAction(action)}>
+              {action.label}
+            </Button>)}
+            <Button size="sm" variant="ghost" icon={X} disabled={pendingAction !== null} onClick={() => select([])}>
+              Clear selection
+            </Button>
+          </div>
         </div>
       )}
+      {actionError && <div className="cgw-table-feedback"><Alert tone="danger" title="Action could not be completed">{actionError} Your selection is kept; you can try the action again.</Alert></div>}
+      <div className={actionNotice ? "cgw-table-notice" : "cgw-sr-only"} role="status">{actionNotice}</div>
       {error && (
         <div className="cgw-table-feedback">
           <Alert
@@ -336,6 +489,8 @@ export function DataTable({
           <caption className="cgw-sr-only">{label}</caption>
           <thead>
             <tr>
+              {rowSelectable && <th scope="col" className="cgw-table-activate"><span className="cgw-sr-only">Active row</span></th>}
+              {renderExpandedRow && <th scope="col" className="cgw-table-expand"><span className="cgw-sr-only">Expand row</span></th>}
               {selectable && (
                 <th className="cgw-table-check">
                   <Checkbox
@@ -344,7 +499,7 @@ export function DataTable({
                     }
                     checked={allSelected}
                     indeterminate={someSelected && !allSelected}
-                    disabled={!ids.length || loading}
+                    disabled={!ids.length || loading || pendingAction !== null}
                     onChange={() =>
                       select(
                         allSelected
@@ -400,20 +555,47 @@ export function DataTable({
             </tr>
           </thead>
           <tbody>
-            {result.rows.map((row) => (
+            {result.rows.map((row) => {
+              const id = getRowId(row), rowLabel = String(getRowLabel(row));
+              const canExpand = !!renderExpandedRow && (getRowCanExpand?.(row) ?? true);
+              const expanded = canExpand && activeExpandedIds.includes(id);
+              const isActive = rowSelectable && id === activeRowId;
+              const detailId = `${tableId}-detail-${encodeURIComponent(`${typeof id}:${id}`)}`;
+              return <Fragment key={`${typeof id}:${id}`}>
               <tr
-                key={getRowId(row)}
-                data-selected={activeIds.includes(getRowId(row)) || undefined}
+                data-selected={activeIds.includes(id) || undefined}
+                data-active={isActive || undefined}
+                data-activatable={canActivate(row) || undefined}
+                aria-current={isActive ? 'true' : undefined}
+                onClick={rowSelectable ? event => clickRow(event, row) : undefined}
+                data-expanded={expanded || undefined}
               >
+                {rowSelectable && <td className="cgw-table-activate">
+                  <button type="button" className="cgw-table-active-button"
+                    ref={node => { if (node) rowButtons.current.set(id, node); else rowButtons.current.delete(id); }}
+                    aria-label={`Activate row ${rowLabel}`} aria-pressed={isActive}
+                    title={`Show ${rowLabel} in connected widgets`} disabled={!canActivate(row)}
+                    tabIndex={id === tabStopRowId ? 0 : -1}
+                    onClick={() => activateRow(row)} onKeyDown={event => moveActiveRow(event, row)}>
+                    {isActive ? <CircleDot size={16} aria-hidden="true" /> : <Circle size={16} aria-hidden="true" />}
+                  </button>
+                </td>}
+                {renderExpandedRow && <td className="cgw-table-expand">
+                  {canExpand && <IconButton className="cgw-table-expand-button" variant="ghost"
+                    label={`${expanded ? "Collapse" : "Expand"} ${rowLabel}`} icon={ChevronRight}
+                    aria-expanded={expanded} aria-controls={expanded ? detailId : undefined}
+                    onClick={() => toggleExpanded(id)} />}
+                </td>}
                 {selectable && (
                   <td>
                     <Checkbox
                       label={
                         <span className="cgw-sr-only">
-                          Select row {getRowId(row)}
+                          Select row {rowLabel}
                         </span>
                       }
                       checked={activeIds.includes(getRowId(row))}
+                      disabled={pendingAction !== null || loading}
                       onChange={() =>
                         select(
                           activeIds.includes(getRowId(row))
@@ -435,7 +617,13 @@ export function DataTable({
                   <td className="cgw-table-actions">{rowActions(row)}</td>
                 )}
               </tr>
-            ))}
+              {expanded && <tr className="cgw-table-detail-row"><td colSpan={columnCount}>
+                <div id={detailId} className="cgw-table-detail" role="region" aria-label={`Details for ${rowLabel}`}>
+                  {renderExpandedRow(row)}
+                </div>
+              </td></tr>}
+              </Fragment>;
+            })}
             {loading &&
               (!result.rows.length || cumulative) &&
               Array.from(

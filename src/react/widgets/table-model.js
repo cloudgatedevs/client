@@ -1,3 +1,4 @@
+import { matchesAdvancedFilters } from './filter-model.js';
 export const clampPage = (page, total, pageSize) =>
   Math.max(1, Math.min(page, Math.max(1, Math.ceil(total / pageSize))));
 export function tableValue(row, column) {
@@ -10,7 +11,7 @@ const collator = new Intl.Collator(undefined, {
 export function queryRows(
   rows,
   columns,
-  { page = 1, pageSize = 10, search = "", sort = null, filters = {} } = {},
+  { page = 1, pageSize = 10, search = "", sort = null, filters = {}, advancedFilters } = {},
 ) {
   const term = search.trim().toLocaleLowerCase();
   let result = rows.filter(
@@ -23,7 +24,7 @@ export function queryRows(
               .toLocaleLowerCase()
               .includes(term),
         )) &&
-      Object.entries(filters).every(
+      matchesAdvancedFilters(row, columns, advancedFilters) && Object.entries(filters).every(
         ([key, value]) =>
           value == null ||
           value === "" ||

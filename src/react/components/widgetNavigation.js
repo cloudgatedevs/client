@@ -1,5 +1,6 @@
 import {
   Blocks,
+  CalendarDays,
   BookOpen,
   CheckCheck,
   Layers,
@@ -17,6 +18,7 @@ import { BACKOFFICE_PERMISSIONS as P } from "../../platform/backoffice-permissio
 const categoryIcons = {
   Foundations: Shapes,
   Data: Table2,
+  Scheduling: CalendarDays,
   Charts: TrendingUp,
   Cards: Layers,
   Actions: MousePointer2,
@@ -41,19 +43,25 @@ export const WIDGET_NAV = {
     { ...link("/widgets", "Overview", LayoutDashboard), end: true },
     ...Object.entries(categoryIcons).map(([category, icon]) => ({
       id: `widgets-${category.toLowerCase()}`,
-      label: category,
+      label: category === 'Data' ? 'Tables' : category,
       icon,
-      children: widgetIndex
+      children: ['Charts','Cards'].includes(category) ? [...new Set(widgetIndex.filter(widget=>widget.category===category).map(widget=>widget.group || 'Essentials'))].map(group=>({
+        id:`widgets-${category.toLowerCase()}-${group.toLowerCase()}`,label:group,icon,
+        children:widgetIndex.filter(widget=>widget.category===category && (widget.group || 'Essentials')===group)
+          .map(widget=>link(`/widgets/${widget.id}`,widget.name,null,[widget.id,widget.exportName || widget.name])),
+      })) : widgetIndex
         .filter((widget) => widget.category === category)
         .map((widget) =>
-          link(`/widgets/${widget.id}`, widget.name, icon, [
+          link(`/widgets/${widget.id}`, widget.name, null, [
             widget.id,
             ...(widget.id === "data-table"
               ? ["lazy loading", "pagination", "sorting", "filtering"]
               : []),
             ...(widget.id === "dialog" ? ["modal"] : []),
-            ...(widget.id === "select" ? ["dropdown"] : []),
+            ...(widget.id === "select" ? ["dropdown", "searchable", "search", "server"] : []),
+            ...(widget.id === "radio" ? ["radio buttons", "choices"] : []),
             ...(widget.id === "icons" ? ["icons", "symbols", "lucide", "svg"] : []),
+            ...(widget.id === "typography" ? ["text", "typography", "headings", "paragraphs", "fonts", "links", "quotes", "lists"] : []),
           ]),
         ),
     })),

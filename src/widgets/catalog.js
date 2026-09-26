@@ -1,15 +1,40 @@
 import { widgetIndex } from "./widget-index.js";
+import { tableExamples } from './table-examples.js';
+import { advancedChartWidgets } from './chart-catalog.js';
+import { cardWidgets, cardGalleryWidget } from './card-catalog.js';
+import { richTextWidget } from './rich-text-catalog.js';
+import { calendarWidget } from './calendar-catalog.js';
+import { scrumWidget } from './scrum-catalog.js';
+import { tabsWidget } from './tabs-catalog.js';
+import { selectWidget } from './select-catalog.js';
+import { radioWidget } from './radio-catalog.js';
+import { timelineWidget } from './timeline-catalog.js';
 const widgetMetadata = Object.fromEntries(widgetIndex.map(widget => [widget.id, widget]));
+const scrumGuidelines = `Use ScrumBoard (KanbanBoard alias) for task boards, sales pipelines, course progress and editorial workflows. Read scrum-board before building; do not add a separate drag-and-drop UI. Supply controlled columns/cards with unique string IDs and valid columnId values. Array order defines the order within columns. onCardsChange(nextCards,move) handles both drops and the accessible Move dialog. Return an async save promise, authorize on the server and update cards after success; throw on failure. move.toIndex is the destination index after removing the moving card. Keep custom metadata and hidden filtered cards intact. Pass loading/error/onRetry from your own loader; the widget does not fetch or save automatically. onCardClick and onAddCard(columnId) open your application's details and creation flows. Read-only permits browsing/details but hides mutations; backend permissions remain required. WIP limits are advisory. Use the grip for pointer/touch drag or the Move button for keyboard column/position selection. List view is a compact alternative on phones. Key the board when switching tenant or data set scope. renderCard is presentational content, with no nested controls when onCardClick is supplied.`;
 
 /** The gallery, CLI and MCP tools all read this catalogue. Examples are compiled in tests. */
 export const widgetImport = "@cloudgatedevs/cloudgate-client/react/widgets";
 export const widgetGuidelines = `Use the installed @cloudgatedevs/cloudgate-client package as the source of truth. Read its package.json version and exports before choosing components. Import reusable React widgets from @cloudgatedevs/cloudgate-client/react/widgets and the shared stylesheet once from @cloudgatedevs/cloudgate-client/react/styles.css. These widgets work without authentication, a router, or a Cloudgate provider.
 
+${scrumGuidelines}
+
+Use Timeline for connected activity feeds, release histories, delivery progress and milestones. Read the timeline entry and activity-timeline recipe. Keep TimelineCard for a standalone event card. Choose variant='activity' for a compact feed, 'cards' for rich entries or 'alternating' for a centred vertical history. orientation='horizontal' works for milestone progress; the widget keeps overflow inside its track and adapts alternating entries on phones. Supply unique stable string IDs in the desired chronological order; the widget never sorts or infers completion from dates. Date-only values stay on their calendar day, timed values should include ISO offsets, and locale/timeZone control formatting and optional contiguous groupByDay headings. Supply state='complete'|'current'|'upcoming'|'blocked' for meaningful progress labels; at most one current step. Provide loading, error/onRetry and disabled states. Optional details stay mounted while collapsed. onLoadMore must return the authorized API request promise; append/deduplicate by ID in your caller and update hasMore. Failures retain entries and support retry. Scope all requests to the tenant/project, abort caller requests on unmount and key Timeline when scope changes. Built-in actions respect disabled; custom children must enforce their own interactions and server permissions.
+
+Use Tabs for in-page sections and view switches. Read the tabs example to choose segmented (default), underline, pills, outline or enclosed. Reuse the same component with orientation='vertical', size, fullWidth and icons/counts; do not build another tab implementation. Provide unique stable string values and an enabled controlled value/onChange. Supplying content connects labelled panels; omitting all content creates a button group, not route links. Use real navigation links for routes. Automatic activation works for local panels; activationMode='manual' moves focus with arrows and opens with Enter/Space, suitable for expensive panels. keepMounted defaults true to retain hidden form state; false lazily mounts only the active contents and loses panel-local edits. Keep important drafts in caller state and abort pending loads on unmount. Horizontal tabs scroll within the strip, vertical labels wrap, and arrow navigation respects orientation and inherited text direction. Apply server permissions independently of disabled tabs.
+
+Use Heading, Paragraph and Text for consistent typography. Heading level (1–6, default 2) controls the document structure; size (display or h1–h6) only controls appearance. Keep one page title and a logical heading hierarchy, regardless of visual size. Paragraph renders p; Text defaults to span and has body, lead, small, caption, label and overline variants. Text label is display text, not a form label; use labelled SDK fields in forms. Use tone='muted' for supporting copy and tone='accent' for brand emphasis. Semantic tones still need meaningful text, not color alone. Use measure for readable 65ch paragraphs when appropriate. TextLink renders an anchor, TextList wraps native li children, Blockquote accepts attribution/cite, and InlineCode is for short code references. Use CodeEditor for multiline source. Inherit typography and palette tokens, and use layout spacing around text; these components have no default outer margins. Do not add another font or reduce root font size for compact layouts.
+
 Use the existing lucide-react collection for consistent icons. The Icon library (icons) entry documents a searchable browser of the installed collection, with exact component names and copyable snippets. In app modules use named imports such as import { Search } from 'lucide-react'; do not import the complete icons registry or another icon package. Use Button icon={Search}, or IconButton icon={Search} label="Search projects". Decorative SVGs next to visible labels should use aria-hidden="true"; standalone meaningful icons need an accessible name. Inherit currentColor or --accent-text rather than hardcoding a brand color. Prefer 16–20px for controls and 24px for standalone icons, with a consistent 2px stroke. IconLibrary itself loads the full registry only for browsing/picking, so do not render it just to show a single icon.
 
-Search this catalogue before writing UI. Read the selected widget's props, example and relevant recipe. Compose these components instead of copying their implementation or introducing another UI/chart library. Preserve the app's layout and appearance settings. Use inherited --ink-*, --mist*, --accent, --accent-fg, --accent-text and --secondary tokens; do not hardcode light backgrounds or brand colors. Use semantic Badge/Alert tones and text, not color alone. Use --cg-section-gap and --cg-card-padding for custom layout spacing. Inherit the saved wide, content, compact or flex layout; do not shrink root type or add fixed page-width wrappers. Widgets already respond to --cg-control-height and --cg-cell-padding. Respect reduced motion. Keep public widgets independent of back-office permissions.
+This library provides optional building blocks, primarily for back-office tooling. User-selected references express preferred ingredients, never an exclusive set of allowed components. Public websites and custom back-office experiences may use bespoke components whenever the library does not fit. Preserve the requested design and existing application shell. Public layout does not imply anonymous data access: retain the website sign-in policy and server permissions. For each selected canonical widget ID, read its props, example and relevant recipe before coding; reuse that documentation during the turn. Prefer shared widgets when suitable without copying their implementation. A table and related chart must share authorized data/filter semantics; use dataset-wide server aggregates rather than the current table page for charts. Inspect real fields and endpoints, and label any prototype data. Preserve the app's layout and appearance settings. Use inherited --ink-*, --mist*, --accent, --accent-fg, --accent-text and --secondary tokens; do not hardcode light backgrounds or brand colors. Use semantic Badge/Alert tones and text, not color alone. Use --cg-section-gap and --cg-card-padding for custom layout spacing. Inherit the saved wide, content, compact or flex layout; do not shrink root type or add fixed page-width wrappers. Widgets already respond to --cg-control-height and --cg-cell-padding. Respect reduced motion. Keep public widgets independent of back-office permissions.
 
 DataTable supports local rows OR loadRows (not both). loadRows receives {page, pageSize, search, sort, filters, signal}; page starts at 1, sort is null or {key,direction:'asc'|'desc'}. Return {rows,total}, where total is the count AFTER filtering and BEFORE pagination. Forward the AbortSignal to fetch. Map sort/filter keys to the server's allowlist, apply tenant scoping and permissions on the server, and translate page to skip/take if needed. Never download the whole dataset to simulate server pagination. Use stable unique getRowId values. Changing reloadKey resets to page 1; use this after create/edit/delete. Use pagination='load-more' or 'infinite' for incremental loading; page-sized requests are merged by row ID. Search is debounced. Avoid permanent loading on failures; show an actionable retry.
+
+For subtables use renderExpandedRow={row => <ChildTable parentId={row.id} />}; child content mounts only while expanded and visible. Put a nested DataTable inside ChildTable with a parent-scoped loadRows and forward its signal. Do not fetch children from the parent render or preload all children. Search, pagination and selection stay independent. getRowCanExpand can hide expansion for leaf rows, and getRowLabel supplies readable accessible names. With selectable, supply bulkActions [{id,label,onAction: async ids => ...}] or handle controlled selectedIds/onSelectionChange in your own UI. Actions receive ALL selected IDs across pages and filters, never just visible records; the header checkbox selects only loaded visible rows. Await the real mutation and throw on failures. Pending actions prevent duplicate submits; failures retain selection, success clears submitted IDs and refreshes by default. For exports use clearSelectionOnSuccess:false and refreshOnSuccess:false. Gate offered actions by permissions and authorize every ID on the server. Reset controlled selection/expansion or key the table when changing tenant or dataset scope.
+
+DataTable includes real .xlsx export by default, including nested tables. Do not add a duplicate CSV/Excel button. The dialog offers all filtered results, loaded/current-page rows and selected rows. Exports use only visible data columns, never row actions or child tables. Set column.exportValue(row) for display-derived fields, exportFormat for Excel number/date formats, exportLabel/exportWidth for workbook presentation, or exportable:false for excluded columns. Raw/accessor values preserve number, boolean and Date types; strings are never treated as formulas. Remote all-results exports reuse loadRows in page-sized, cancellable requests and stop with an error if paging is incomplete or changes. Remote selected exports use the latest loaded snapshots of selected records, even across filters. Use loadExportRows({scope,selectedIds,page,pageSize,search,sort,filters,signal}) returning an array for a dedicated endpoint or preselected IDs not loaded in the table; enforce the same server permissions. Client exports are limited to 50,000 rows; narrow filters or build a server export for larger datasets. Set exportable:false to omit the feature and exportFileName to customize the filename.
+
+Use Button and IconButton for consistent actions. Button variant is primary, secondary, neutral, success, warning, danger, info, ghost or link. Primary is the main action, secondary/neutral are supporting actions, and semantic variants convey intent with clear labels. appearance='solid'|'soft'|'outline' changes visual emphasis without changing intent; omitting it preserves each variant's default. Ghost and link stay quiet and ignore appearance. Link is a button style for actions; use TextLink or an anchor for navigation. Use loading while awaiting a mutation and disabled when unavailable. iconPosition='end' moves the icon or spinner after the label; fullWidth fits forms and cards. IconButton shares the variants, appearances, sizes and loading states. Avoid one-off button CSS and hardcoded colours; semantic fills and foregrounds adapt to custom palettes and dark mode. A danger button does not itself confirm or authorize a destructive operation.
 
 Use Input/Select labels, accessible names on IconButton, descriptive Dialog titles, named Tabs, and chart labels. Use render(value,row) for table cells and accessor(row) for sortable/searchable derived values. Select and Input use native change events; Switch and Slider receive the new value directly. Slider and Switch are controlled. Tabs is controlled and supports arrow/Home/End navigation. Dialog is controlled with open/onClose and uses the SDK's shared entrance/exit animations, focus trap and focus restoration. Keep Dialog mounted while open changes so exit animation can finish.
 
@@ -23,7 +48,21 @@ Use CodeEditor for source previews, snippets and code fields rather than a plain
 
 Use Form with named Input, Textarea and Select fields for validated submission. Put constraints directly on the fields: required, type, minLength, maxLength, pattern, min, max and step. Errors appear after blur or submit, then update as the user corrects them. Form onSubmit(data,event) receives native FormData only when valid; it prevents native navigation and focuses the first error. Custom validate(value,formData) rules are synchronous and return an error string or undefined; use formData for cross-field rules. Use error for server validation messages and clear them in your change/reset handler. Use validationMessages to customize built-in wording. Reset buttons clear validation and uncontrolled values; restore controlled state yourself in onReset. Client validation never replaces backend validation. Keep async saves, pending state and server errors in your submission handler.
 
-Use SearchSelect for searchable dropdowns. Pass options for local filtering, or loadOptions({search,limit,signal}) returning an array of {value,label,description?,disabled?}. Forward signal to fetch; scope and search at the API before limiting results. Do not fetch all records or filter a remote result page again. Requests debounce and stale responses are ignored. Keep values unique and nonempty; numeric zero is valid. onChange(value,option) receives the selected ID, not a native event; clearing emits ('',null). Pass selectedOption to label a preselected remote ID. Change reloadKey when tenant/filter context changes or records are edited. Use name and required inside Form to submit and validate the selected ID, not the typed search. Customize debounceMs, minSearchLength and limit for the endpoint. Read the shipped search-select example and map its placeholder API route to the real application endpoint.
+Use RadioGroup for a small set of mutually exclusive choices. Read radio before building. Use native radios, a visible label, unique option values and a stable form name. variant='cards' adds descriptive choice cards; orientation='horizontal' wraps inline options. onChange receives the original value and option, while custom validate receives the selected string. Controlled forms reset their value in onReset; uncontrolled defaultValue resets automatically. Use disabled at group or option level. Native arrow and Space keys provide keyboard selection.
+
+The Select library page combines native Select and SearchSelect. Use Select for short lists and read event.target.value from its native onChange event. Use SearchSelect for searchable dropdowns. Pass options for local filtering, or loadOptions({search,limit,signal}) returning an array of {value,label,description?,disabled?}. Forward signal to fetch; scope and search at the API before limiting results. Do not fetch all records or filter a remote result page again. Requests debounce and stale responses are ignored. Keep values unique and nonempty; numeric zero is valid. onChange(value,option) receives the selected ID, not a native event; clearing emits ('',null). Pass selectedOption to label a preselected remote ID. Change reloadKey when tenant/filter context changes or records are edited. Use name and required inside Form to submit and validate the selected ID, not the typed search. Customize debounceMs, minSearchLength and limit for the endpoint. Read the shipped select example and map its placeholder API route to the real application endpoint.
+
+Use rowSelectable on DataTable for a single active record that drives related widgets. Read row-selection-table. Control activeRowId (null for none, zero is valid) and handle onActiveRowChange(id,row). This is independent of bulk selectedIds and Excel selected exports. The ID persists across paging, filtering and refresh; clear it on deletion or tenant/dataset changes. Load authorized details by ID, key the detail component, abort superseded requests, ignore late responses and show loading/error/retry. Embedded links, edit controls, checkboxes and expansion buttons must keep their own interactions.
+
+The six table patterns (data-table, lazy-table, selection-table, row-selection-table, subtable, advanced-table) all compose DataTable. Read the focused example before building. Enable advanced filtering with filterFields [{key,label,type,options?}]: text, number, date or select. The query also includes advancedFilters {match:'all'|'any',rules:[{field,type,operator,value?,valueTo?}]}; forward it in loadRows and loadExportRows. Dates are YYYY-MM-DD, ranges are inclusive, multi-select values are arrays. Validate every field, operator and value on the server; apply AND/OR before counting and paging. Filter changes reset pagination and abort stale requests. Do not add another filter builder or Excel control.
+
+Charts now include 25 additional typed exports. Search by the chart name and read its data shape; specialized charts do not all use data/series. Use Histogram for raw observations, BoxPlotChart for quartiles/outliers, ScatterChart/BubbleChart for relationships, WaterfallChart for cumulative changes, and RangeBarChart for intervals. SankeyChart requires acyclic positive flows; GraphChart supports cycles. Hierarchy group rows are subtotals. PercentBarChart requires non-negative measures. GaugeChart clamps the arc while preserving the actual reading. The advanced renderer loads on demand and inherits appearance tokens; do not import ECharts directly in generated modules. Keep showDataTable enabled for an accessible, exportable alternative to pointer tooltips. Aggregate dense data at the API and supply meaningful labels and consistent units.
+
+Use the app card patterns before building custom cards. Search product-card, course-card, metric-chart-card, timeline-card, article-card, profile-card, project-card, task-card, event-card, pricing-card, file-card, testimonial-card, job-card, listing-card, goal-card, notification-card, integration-card or order-card. Compose lists with CardGrid and stable keys; minCardWidth is a responsive minimum, not a fixed page width. Timeline accepts ordered items with stable IDs; the caller sorts and loads activity. Set headingLevel to fit the surrounding document. Use image={{src,alt,position?}} for real media or media for custom content. Missing/failed images have a fallback. Never wrap a card containing controls in an anchor; use titleHref and explicit actions. action/secondaryAction take {label,onClick?,href?,icon?,variant?,disabled?,loading?}; own the mutation, await it, surface errors and supply pending state. Saved state and task completion are controlled through saved/onSavedChange and checked/onCheckedChange. Do not claim a purchase, reservation or integration succeeded before the real API confirms it. Supply loading, error/onRetry, empty and disabled states; custom children/footer manage their own permissions and disabled state. Numeric prices use currency/locale and keep zero valid; missing prices are unknown, not free. Order items.amount is a complete line total and total is supplied by the caller, including tax and shipping. MetricChartCard combines CountUp with a line/bar chart; keep showDataTable enabled and use consistent units. GoalCard clamps only the progress bar, retaining the actual value. All card surfaces, gaps, text, statuses and motion inherit the app's appearance. Read card-grid-actions and activity-timeline recipes for composition and async handling.
+
+Use RichTextEditor (WysiwygEditor alias) for editable formatted content and RichTextContent for safe HTML display. Read the wysiwyg example before implementing notes, descriptions, articles or lesson content; do not add another editing library. Pass controlled value/onChange HTML, label and an appropriate basic/standard/full toolbar. Use name, required, maxLength and validate(html,formData) with Form. Required checks meaningful content, maxLength counts text characters, and named form values are HTML. Disable saves through onPendingChange while startup or uploads are pending. File uploads require your own uploadImage(file,{signal,onProgress}) returning {url}; forward signal, authorize the endpoint and validate files on the server. Without an adapter use image URLs. Use readOnly for viewing without a toolbar, disabled to omit form data and loading for skeletons. Render user content with RichTextContent, never raw dangerouslySetInnerHTML; sanitize and authorize again on the server. CKEditor loads on demand in the browser and uses the same GPL licenseKey default as Cloudgate React; configure the consuming app's applicable license. No premium plugins or upload service are assumed.
+
+Use Calendar for event schedules, bookings, lessons and milestones. Read the calendar example; do not import another calendar engine directly. Choose local events or a stable loadEvents({start,end,timeZone,signal}) returning events for the visible range. Forward signal and fetch overlapping events, including ones starting before the range. Both range ends and event ends are exclusive. All-day dates are YYYY-MM-DD; timed events should carry explicit ISO offsets for unambiguous instants. Use stable unique IDs. Configure locale, timeZone, firstDay and weekends. onEventClick gets the original record; onDateClick and onRangeSelect open your own authorized creation flow, with no assumed persistence. Add event plus Go to date supports keyboard creation; agenda is useful on narrow screens. Change reloadKey after saves or when tenant/filter scope changes. Supply loading, errors and readOnly/disabled as appropriate; backend permissions remain required. initialDate/initialView apply on mount; key the widget to reset navigation. Do not claim a booking succeeded until the real API confirms it.
 
 For each feature, verify loading, empty, error, disabled/read-only, narrow screen, keyboard, light/dark/system, compact density, custom palettes (including pale primary colours) and reduced motion. UI permission checks improve usability; enforce every read/write on the backend too. The React widget catalogue is distinct from the legacy Cloudweb page-builder cookbook: do not use widgetBuilderConfig or page-builder JSON for React modules. If this installed SDK lacks a needed export, use existing supported components or explain the required SDK upgrade; never invent an API or silently install a new SDK version.`;
 
@@ -31,6 +70,47 @@ const example = (imports, body) =>
   `import { ${imports} } from '${widgetImport}';\n\n${body}`;
 const prop = (name, type, description) => ({ name, type, description });
 export const widgets = [
+  {
+    ...widgetMetadata["typography"],
+    exports: ["Heading", "Text", "Paragraph", "TextLink", "TextList", "Blockquote", "InlineCode"],
+    description: "A shared type scale for headings, paragraphs, labels and supporting text, with links, lists, quotes and inline code. Inherits your app’s font, palette and layout.",
+    props: [
+      prop("Heading: level / size", "1–6 / 'display' | 'h1'…'h6'", "Level defaults to 2 and selects the semantic heading element. Size defaults to that level; change appearance without changing the document structure. Display and h1 sizes adapt to narrow screens."),
+      prop("Heading: balance", "boolean", "Balances heading line breaks where supported. Defaults to true."),
+      prop("Text / Paragraph: variant", "'body' | 'lead' | 'small' | 'caption' | 'label' | 'overline'", "Body is the default. Paragraph always renders p; Text defaults to span. Labels are display text, not replacements for form labels."),
+      prop("Text: as", "'span' | 'p' | 'div' | 'small' | 'strong' | 'em'", "Choose the appropriate native text element. Use Heading for headings. Explicit align or measure makes inline text display as a block."),
+      prop("Heading / Text / Paragraph: tone / align", "'default' | 'muted' | 'accent' | 'success' | 'warning' | 'danger' | 'info' / 'start' | 'center' | 'end'", "Theme-aware foreground colors and logical text alignment. Status meaning should also be conveyed in words."),
+      prop("Text / Paragraph: weight / measure", "'normal' | 'medium' | 'semibold' | 'bold' / boolean", "Optional weight override. measure limits the text block to 65ch; no width limit by default."),
+      prop("TextLink", "Native anchor props", "Underlined, keyboard-focusable link. Supply href and descriptive text. New-tab links include noopener/noreferrer."),
+      prop("TextList: ordered / compact / children", "boolean / boolean / ReactNode", "Bullets by default; ordered renders ol. Pass native li children. Supports nested TextList and start/reversed for ordered lists."),
+      prop("Blockquote: attribution / cite", "ReactNode / string", "Styled quotation with optional source text and the native cite URL."),
+      prop("InlineCode", "Native code props", "Short code references, with inherited colors and safe text rendering. Use CodeEditor for multiline snippets."),
+      prop("Native props / refs", "HTML attributes", "Pass className, style, id, accessibility attributes and forwarded refs. No outer margins; compose with layout spacing."),
+    ],
+    example: example("Heading, Text, Paragraph, TextLink, TextList, Blockquote, InlineCode", `export default function Example() {
+  return <article className="cgw-stack">
+    <header>
+      <Text variant="overline" tone="accent">Project workspace</Text>
+      <Heading level={1}>Your next chapter starts here.</Heading>
+    </header>
+    <Paragraph variant="lead" tone="muted" measure>
+      Everything your team needs to turn an idea into something useful.
+    </Paragraph>
+    <section className="cgw-stack" aria-labelledby="next-steps">
+      <Heading id="next-steps" level={2} size="h4">A few good next steps</Heading>
+      <Paragraph>Start with a <strong>clear goal</strong> and give your project a name in <InlineCode>project.name</InlineCode>.</Paragraph>
+      <TextList ordered>
+        <li>Choose your starting point.</li>
+        <li>Invite your team.</li>
+        <li>Publish when you are ready.</li>
+      </TextList>
+      <Blockquote attribution="The product team">Small, thoughtful details add up.</Blockquote>
+      <Paragraph variant="small"><TextLink href="#next-steps">Review the next steps</TextLink></Paragraph>
+      <Text variant="caption" tone="muted">Last updated today</Text>
+    </section>
+  </article>;
+}`),
+  },
   {
     ...widgetMetadata["icons"],
     exports: ["IconLibrary"],
@@ -53,51 +133,8 @@ export const widgets = [
   </div>;
 }`)}`,
   },
-  {
-    ...widgetMetadata["search-select"],
-    exports: ["SearchSelect"],
-    description: "An editable dropdown with local filtering or debounced server search, keyboard selection, loading, retry and form validation.",
-    props: [
-      prop("options", "SearchOption[]", "Local {value,label,description?,disabled?} options. Values are unique non-empty strings or numbers; 0 is supported. Searches labels and descriptions."),
-      prop("loadOptions", "({search,limit,signal}) => Promise<SearchOption[]>", "Remote mode. Filter and limit at the server; return an array in display order. Results are not filtered again locally. Forward the AbortSignal to fetch."),
-      prop("value / defaultValue / onChange", "string | number / (value,option) => void", "A committed option ID, separate from search text. value controls selection; defaultValue initializes uncontrolled state. Clearing emits '' and null."),
-      prop("selectedOption", "SearchOption", "Provide the label for a preselected remote ID before results arrive. Selected labels are retained across searches."),
-      prop("debounceMs / minSearchLength / limit", "number", "Defaults: 300ms, 0 characters, 50 requested remote results. Only searches while open. A limit-sized response prompts users to narrow their search."),
-      prop("reloadKey", "string | number", "Change when the data source, tenant, external filters or permissions change; aborts the previous search and refreshes results."),
-      prop("label / hint / error / placeholder / name", "ReactNode / string", "Accessible field feedback; name submits the selected ID, never the search text."),
-      prop("required / validate / validationMessages", "Shared field validation", "Required means a selected option. Custom validate receives the selected ID as a string and optional FormData."),
-      prop("disabled / readOnly / clearable", "boolean", "Clear is available by default. Disabled/read-only fields cannot change selection."),
-    ],
-    example: `import { useState } from 'react';\n${example("SearchSelect", `// Replace this route and mapping with your application's search API.
-async function searchProjects({ search, limit, signal }) {
-  const params = new URLSearchParams({ search, limit: String(limit) });
-  const response = await fetch('/api/projects/search?' + params, { signal });
-  if (!response.ok) throw new Error('Could not search projects.');
-  const data = await response.json();
-  return data.items.map(project => ({
-    value: project.id,
-    label: project.name,
-    description: project.ownerName,
-  }));
-}
-
-export default function Example() {
-  const [projectId, setProjectId] = useState('');
-  return (
-    <SearchSelect
-      label="Project"
-      name="projectId"
-      value={projectId}
-      onChange={setProjectId}
-      loadOptions={searchProjects}
-      minSearchLength={2}
-      debounceMs={300}
-      limit={20}
-      required
-    />
-  );
-}`)}`,
-  },
+  selectWidget,
+  radioWidget,
   {
     ...widgetMetadata["code-editor"],
     exports: ["CodeEditor"],
@@ -128,7 +165,7 @@ export default function Example() {
     ...widgetMetadata["data-table"],
     exports: ["DataTable"],
     description:
-      "Searchable, sortable records with server pagination, incremental loading, selection and column controls.",
+      "Searchable, sortable records with lazy subtables, bulk actions, Excel export and server pagination.",
     props: [
       prop(
         "columns",
@@ -179,8 +216,18 @@ export default function Example() {
       prop(
         "selectable / selectedIds / onSelectionChange",
         "boolean / RowId[] / (ids) => void",
-        "Optional controlled selection across pages. Caller owns bulk actions and clearing after deletion.",
+        "Selection persists across pages and filters. The header selects only loaded visible rows. Control IDs when changing dataset or tenant scope.",
       ),
+      prop("bulkActions", "TableBulkAction[]", "{id,label,icon?,variant?,disabled?,onAction(ids),clearSelectionOnSuccess?,refreshOnSuccess?}. Receives every selected ID. Await success or throw; busy/error feedback is built in. Success clears submitted IDs and refreshes unless opted out."),
+      prop("rowSelectable / activeRowId / defaultActiveRowId", "boolean / RowId | null", "Enable one active highlighted row for connected widgets. activeRowId controls it; defaultActiveRowId initializes internal state. Null means none, zero is valid. The active ID persists across pagination, search and refresh; clear controlled state when deleting the record or changing dataset/tenant."),
+      prop("onActiveRowChange", "(id:RowId, row:T) => void", "Fires when the user activates a different row. Store its ID to load related detail widgets; abort obsolete requests and handle loading/error states. Re-clicking the active row keeps it active. Independent of bulk selection and Excel's selected scope."),
+      prop("getRowCanActivate", "(row:T) => boolean", "Optional predicate for active-row interaction. Plain cells activate; embedded links, controls, expansion buttons and elements marked data-row-selection-ignore retain their own actions. Native activation buttons support Enter/Space and Up/Down/Home/End within the loaded view."),
+      prop("renderExpandedRow", "(row:T) => ReactNode", "Return a nested DataTable or detail component. Mounted only while expanded and visible; child loaders are lazy and abort on collapse. Each subtable owns its query and selection."),
+      prop("getRowCanExpand / getRowLabel", "(row) => boolean / (row) => string | number", "Optional leaf-row predicate and readable row name for expansion and selection controls. All rows are expandable by default; names default to IDs."),
+      prop("expandedIds / onExpandedChange", "RowId[] / (ids) => void", "Optional controlled expansion across pages. Collapsing or paging away unmounts child content, resetting its local state."),
+      prop("exportable / exportFileName", "boolean / string", "Excel export is enabled by default. Download all filtered results, loaded/current-page rows or selected rows as .xlsx, using visible columns only. Subtables export independently."),
+      prop("loadExportRows", "(TableExportQuery) => Promise<T[]>", "Optional export-specific loader. Receives scope ('all', 'page', 'selected'), selectedIds, current query and signal. Default all-results loading pages through loadRows; selected remote records use retained snapshots. Limited to 50,000 rows."),
+      prop("Column exportable / exportValue / exportFormat", "boolean / (row) => scalar | Date / string", "Omit a column with exportable:false. exportValue supplies a derived scalar; exportFormat is an Excel format such as '$#,##0.00'. Also supports exportLabel and exportWidth (characters)."),
       prop(
         "toolbar / rowActions",
         "ReactNode / (row) => ReactNode",
@@ -202,10 +249,27 @@ export default function Example() {
         "Accessible table label and user-facing messages.",
       ),
     ],
-    example: example(
-      "DataTable, Badge",
-      `const columns = [\n  { key: 'name', label: 'Name' },\n  { key: 'status', label: 'Status', render: value => <Badge tone={value === 'Active' ? 'success' : 'neutral'}>{value}</Badge> },\n  { key: 'amount', label: 'Amount', align: 'right', render: value => '$' + value.toFixed(2) },\n];\nexport default function Example() {\n  return <DataTable label="Orders" columns={columns} rows={[{id: 1, name: 'Design subscription', status: 'Active', amount: 49}]} />;\n}`,
-    ),
+    example: `import { useState } from 'react';\n${example("DataTable, Badge", `const columns = [
+  {key:'name', label:'Project'},
+  {key:'status', label:'Status', render: value => <Badge tone={value === 'Active' ? 'success' : 'neutral'}>{value}</Badge>},
+];
+export default function Example() {
+  const [projects, setProjects] = useState([
+    {id:1, name:'Brand studio', status:'Active', tasks:[{id:'1-1', name:'Design review'}, {id:'1-2', name:'Launch preparation'}]},
+    {id:2, name:'Customer portal', status:'Paused', tasks:[{id:'2-1', name:'Accessibility review'}]},
+  ]);
+  function updateStatus(ids, status) {
+    setProjects(rows => rows.map(row => ids.includes(row.id) ? {...row, status} : row));
+  }
+  return <DataTable label="Projects" columns={columns} rows={projects} selectable
+    getRowLabel={row => row.name} getRowCanExpand={row => row.tasks.length > 0}
+    bulkActions={[
+      {id:'activate', label:'Activate', onAction: ids => updateStatus(ids, 'Active')},
+      {id:'pause', label:'Pause', onAction: ids => updateStatus(ids, 'Paused')},
+    ]}
+    renderExpandedRow={row => <DataTable label={row.name + ' tasks'}
+      columns={[{key:'name', label:'Task'}]} rows={row.tasks} pageSize={5} />} />;
+}`)}`,
   },
   {
     ...widgetMetadata["line-chart"],
@@ -349,20 +413,23 @@ export default function Example() {
     ...widgetMetadata["button"],
     exports: ["Button", "IconButton"],
     description:
-      "Consistent actions with clear hierarchy, loading feedback and accessible icon buttons.",
+      "Primary, secondary and semantic actions with solid, soft and outline styles, icons and busy states.",
     props: [
       prop(
         "variant",
-        "'primary' | 'secondary' | 'ghost' | 'danger'",
-        "Primary is the default.",
+        "'primary' | 'secondary' | 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'ghost' | 'link'",
+        "Primary is the default. Secondary is a supporting neutral action. Semantic colours inherit the palette. Link is a button style, not a navigation anchor.",
       ),
+      prop("appearance", "'solid' | 'soft' | 'outline'", "Optional emphasis override for coloured variants. Existing defaults are preserved; semantic variants default soft. Ghost and link ignore this option."),
       prop("size", "'sm' | 'md' | 'lg'", "Medium is the default."),
+      prop("fullWidth", "boolean", "Fill the available width, wrapping long labels when needed."),
       prop(
         "loading / disabled",
         "boolean",
         "Prevents repeat submissions; loading exposes aria-busy.",
       ),
       prop("icon", "React component", "Optional leading icon."),
+      prop("iconPosition", "'start' | 'end'", "Defaults start. Positions the icon or loading spinner before or after the label."),
       prop(
         "label (IconButton)",
         "string",
@@ -374,10 +441,29 @@ export default function Example() {
         "Defaults to type=button; explicitly use submit in forms.",
       ),
     ],
-    example: example(
-      "Button",
-      `export default function Example() {\n  return <div className="cgw-row"><Button>Save changes</Button><Button variant="secondary">Cancel</Button><Button loading>Saving</Button></div>;\n}`,
-    ),
+    example: `import { useState } from 'react';
+import { ArrowRight, Check, Trash2 } from 'lucide-react';
+${example('Button, IconButton', `export default function Example() {
+  const [message,setMessage]=useState('');
+  return <div className="cgw-stack">
+    <div className="cgw-row">
+      <Button onClick={()=>setMessage('Primary action selected.')}>Primary</Button>
+      <Button variant="secondary" onClick={()=>setMessage('Secondary action selected.')}>Secondary</Button>
+      <Button variant="neutral" onClick={()=>setMessage('Neutral action selected.')}>Neutral</Button>
+      <Button variant="success" appearance="solid" icon={Check} onClick={()=>setMessage('Success action selected.')}>Approve</Button>
+      <Button variant="warning" appearance="soft" onClick={()=>setMessage('Warning action selected.')}>Review</Button>
+      <Button variant="danger" appearance="outline" icon={Trash2} onClick={()=>setMessage('Delete requested. Confirm before performing a real deletion.')}>Delete</Button>
+      <Button variant="info" onClick={()=>setMessage('Information action selected.')}>Information</Button>
+      <Button variant="ghost" onClick={()=>setMessage('Options selected.')}>Options</Button>
+      <Button variant="link" onClick={()=>setMessage('Details selected.')}>View details</Button>
+      <IconButton variant="danger" appearance="soft" icon={Trash2} label="Remove item" onClick={()=>setMessage('Remove requested in this example.')} />
+      <Button loading variant="success" appearance="solid">Saving</Button>
+      <Button disabled variant="secondary">Unavailable</Button>
+    </div>
+    <Button fullWidth icon={ArrowRight} iconPosition="end" onClick={()=>setMessage('Continue selected.')}>Continue</Button>
+    <p role="status">{message}</p>
+  </div>;
+}`)}`,
   },
   {
     ...widgetMetadata["input"],
@@ -437,31 +523,6 @@ export default function Example() {
 }`),
   },
   {
-    ...widgetMetadata["select"],
-    exports: ["Select"],
-    description:
-      "A styled native select with predictable keyboard and mobile behaviour.",
-    props: [
-      prop("required / validate / validationMessages", "boolean / function / object", "Uses the same blur, change and submit validation as Input. Combine required with an empty placeholder option."),
-      prop(
-        "options",
-        "{value:string|number,label:string,disabled?:boolean}[]",
-        "Option values must be unique.",
-      ),
-      prop(
-        "label / hint / error / placeholder",
-        "ReactNode / string",
-        "Accessible field labels and feedback.",
-      ),
-      prop(
-        "value / onChange",
-        "Native select attributes",
-        "Read the new string value from event.target.value.",
-      ),
-    ],
-    example: `import { useState } from 'react';\n${example("Select", `export default function Example() {\n  const [period, setPeriod] = useState('30');\n  return <Select label="Reporting period" value={period} onChange={e => setPeriod(e.target.value)} options={[{value:'7',label:'Last 7 days'}, {value:'30',label:'Last 30 days'}]} />;\n}`)}`,
-  },
-  {
     ...widgetMetadata["slider"],
     exports: ["Slider"],
     description:
@@ -490,12 +551,17 @@ export default function Example() {
     ...widgetMetadata["switch"],
     exports: ["Switch", "Checkbox"],
     description:
-      "Binary choices with clear labels, helper text and native checkbox selection.",
+      "Binary choices with three switch sizes, clear labels, helper text and native checkbox selection.",
     props: [
       prop(
         "Switch: label / hint / checked / onChange",
         "string / string / boolean / (checked:boolean) => void",
         "Controlled switch uses a boolean callback.",
+      ),
+      prop(
+        "Switch: size",
+        "'sm' | 'md' | 'lg'",
+        "Sizes the track and thumb together. Defaults to md; sm fits compact settings and lg suits prominent controls.",
       ),
       prop(
         "Checkbox: label / hint / checked / onChange",
@@ -509,28 +575,9 @@ export default function Example() {
       ),
       prop("disabled", "boolean", "Prevents interaction."),
     ],
-    example: `import { useState } from 'react';\n${example("Switch, Checkbox", `export default function Example() {\n  const [enabled, setEnabled] = useState(true);\n  return <div className="cgw-stack"><Switch label="Email updates" hint="A weekly summary of activity." checked={enabled} onChange={setEnabled} /><Checkbox label="Include project activity" defaultChecked /></div>;\n}`)}`,
+    example: `import { useState } from 'react';\n${example("Switch, Checkbox", `export default function Example() {\n  const [settings, setSettings] = useState({ activity: true, email: true, notifications: false });\n  const update = key => checked => setSettings(current => ({ ...current, [key]: checked }));\n  return (\n    <div className="cgw-stack">\n      <Switch size="sm" label="Activity badges" checked={settings.activity} onChange={update('activity')} />\n      <Switch size="md" label="Email updates" hint="A weekly summary of activity." checked={settings.email} onChange={update('email')} />\n      <Switch size="lg" label="Enable notifications" checked={settings.notifications} onChange={update('notifications')} />\n      <Checkbox label="Include project activity" defaultChecked />\n    </div>\n  );\n}`)}`,
   },
-  {
-    ...widgetMetadata["tabs"],
-    exports: ["Tabs"],
-    description:
-      "Compact sections with arrow-key navigation and connected tab panels.",
-    props: [
-      prop(
-        "items",
-        "{value:string,label:ReactNode,content?:ReactNode,icon?:Component,count?:number,disabled?:boolean}[]",
-        "Stable unique values. Provide content for connected panels.",
-      ),
-      prop(
-        "value / onChange",
-        "string / (value:string) => void",
-        "Controlled selected tab; value must match an enabled item.",
-      ),
-      prop("label", "string", "Accessible label for the tab list."),
-    ],
-    example: `import { useState } from 'react';\n${example("Tabs", `export default function Example() {\n  const [tab, setTab] = useState('overview');\n  return <Tabs label="Project sections" value={tab} onChange={setTab} items={[{value:'overview',label:'Overview',content:<p>Your project at a glance.</p>}, {value:'activity',label:'Activity',count:3,content:<p>Recent activity.</p>}]} />;\n}`)}`,
-  },
+  tabsWidget,
   {
     ...widgetMetadata["dialog"],
     exports: ["Dialog"],
@@ -657,7 +704,97 @@ export default function Example() {
   },
 ];
 
+const tableWidget = widgets.find(widget => widget.id === 'data-table');
+widgets.push(...advancedChartWidgets);
+widgets.push(cardGalleryWidget,...cardWidgets);
+widgets.push(richTextWidget);
+widgets.push(calendarWidget);
+widgets.push(scrumWidget);
+widgets.push(timelineWidget);
+tableWidget.props.push(
+  prop('filterFields', 'TableFilterField[]', 'Enable the filter builder with {key,label,type,options?}. Types: text, number, date, select. Keys match column keys/accessors; select options are {value,label}.'),
+  prop('advancedFilters / defaultAdvancedFilters / onAdvancedFiltersChange', 'AdvancedTableFilters / callback', "{match:'all'|'any',rules:[{field,type,operator,value?,valueTo?}]}. Controlled or internal state. Operators depend on type. Date values use YYYY-MM-DD; between is inclusive. Filter changes reset pagination and are included in loadRows and Excel queries."),
+);
+Object.assign(tableWidget, tableExamples['data-table']);
+for (const id of ['lazy-table','selection-table','row-selection-table','subtable','advanced-table']) {
+  widgets.push({...widgetMetadata[id],exports:['DataTable'],props:tableWidget.props,...tableExamples[id]});
+}
+
 export const widgetRecipes = [
+  {
+    id:'card-grid-actions', name:'Product cards with async actions',
+    description:'Responsive product cards with real pending/error handling and controlled saved items.',
+    widgets:['cards','product-card','alert'],
+    code:`import { useState } from 'react';
+${example('CardGrid, ProductCard, Alert', `function Product({product, addToCart, saved, onSavedChange}) {
+  const [pending,setPending]=useState(false), [error,setError]=useState(''), [added,setAdded]=useState(false);
+  async function add() {
+    if (pending) return;
+    setPending(true); setError(''); setAdded(false);
+    try { await addToCart(product.id); setAdded(true); }
+    catch (err) { setError(err.message || 'Could not add this item.'); }
+    finally { setPending(false); }
+  }
+  return <div className="cgw-stack"><ProductCard title={product.name} description={product.description}
+    price={product.price} currency={product.currency} image={product.image} available={product.available}
+    saved={saved} onSavedChange={onSavedChange} action={{label:added?'Add another':'Add to cart',loading:pending,onClick:add}}
+    footer={added ? <span role="status">Added to your cart.</span> : undefined} />
+    {error && <Alert tone="danger">{error}</Alert>}</div>;
+}
+// addToCart must await the real API and throw on failure. Saved IDs are owned by the caller.
+export default function Products({products, addToCart, savedIds, onSavedChange}) {
+  return <CardGrid minCardWidth={280}>{products.map(product=><Product key={product.id}
+    product={product} addToCart={addToCart} saved={savedIds.includes(product.id)}
+    onSavedChange={saved=>onSavedChange(product.id,saved)} />)}</CardGrid>;
+}
+`)}`,
+  },
+  {
+    id:'activity-timeline', name:'Activity timeline',
+    description:'Turn already ordered activity records into accessible, connected timeline cards.',
+    widgets:['timeline'],
+    code:example('Timeline', `// Load, authorize and sort the records in your app before rendering.
+export default function Activity({events, loading = false}) {
+  return <Timeline label="Project activity" loading={loading} emptyTitle="No activity yet"
+    items={events.map(event=>({id:event.id, title:event.title, description:event.description,
+      dateTime:event.createdAt, time:new Date(event.createdAt).toLocaleString(),
+      actor:event.actorName, actorAvatar:event.actorAvatar, status:event.status,
+      tone:event.status==='Completed'?'success':'neutral', titleHref:event.href}))} />;
+}`),
+  },
+  {
+    id: "subtables-bulk-actions",
+    name: "Lazy subtables and bulk actions",
+    description: "Load children on expansion and apply actions to selections across server pages.",
+    widgets: ["data-table"],
+    code: example("DataTable", `// Adapt these routes to your app. Authorize parent access and every selected ID on the server.
+async function loadPage(url, {page, pageSize, search, sort, filters, signal}) {
+  const params = new URLSearchParams({page:String(page), pageSize:String(pageSize), search});
+  if (sort) { params.set('sort', sort.key); params.set('direction', sort.direction); }
+  if (filters.status) params.set('status', filters.status);
+  const response = await fetch(url + '?' + params, {signal, credentials:'same-origin'});
+  if (!response.ok) throw new Error('Could not load records.');
+  return response.json(); // {rows, total}; filter and page on the server
+}
+function Tasks({projectId}) {
+  return <DataTable label="Project tasks" columns={[{key:'name',label:'Task'}, {key:'status',label:'Status'}]}
+    pageSize={5} loadRows={query => loadPage('/api/projects/' + encodeURIComponent(projectId) + '/tasks', query)} />;
+}
+async function pauseProjects(ids) {
+  const response = await fetch('/api/projects/bulk-status', {
+    method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ids, status:'Paused'}),
+  });
+  if (!response.ok) throw new Error('Could not pause the selected projects.');
+  // Resolve only when ALL submitted IDs succeeded. Handle per-ID failures here if your API returns them.
+}
+export default function Projects({canEdit = false}) {
+  return <DataTable label="Projects" columns={[{key:'name',label:'Project'}, {key:'status',label:'Status'}]}
+    loadRows={query => loadPage('/api/projects', query)} getRowLabel={row => row.name}
+    renderExpandedRow={row => <Tasks projectId={row.id} />}
+    selectable={canEdit} bulkActions={canEdit ? [{id:'pause', label:'Pause', onAction:pauseProjects}] : []} />;
+}`),
+  },
   {
     id: "remote-table-edit",
     name: "Remote table with editing",
@@ -717,6 +854,6 @@ export function searchWidgets(query = "") {
   );
 }
 export const getWidget = (id) =>
-  widgets.find((widget) => widget.id === id || widget.exports.includes(id));
+  widgets.find((widget) => widget.id === (id === 'search-select' ? 'select' : id) || widget.exports.includes(id));
 export const getWidgetRecipe = (id) =>
   widgetRecipes.find((recipe) => recipe.id === id);

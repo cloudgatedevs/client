@@ -42,10 +42,11 @@ function LegacyRedirect({ to }) {
   return <Navigate to={{ pathname: to, search, hash }} replace />;
 }
 /** Mount inside your router. Children are your application's own Route elements. */
-export function CloudgateBackoffice({ client, metadata, navigation = [], children, fallback = '/profile', developerMode = true, basePath = '', publicHome }) {
+export function CloudgateBackoffice({ client, metadata, navigation = [], children, fallback = '/profile', developerMode = true, basePath = '', publicHome, publicRoutes }) {
   const navigate = useNavigate();
   const base = normalizeBackofficeBasePath(basePath);
   if (publicHome && !base) throw new Error('Set a back office basePath when providing a public home page.');
+  if (publicRoutes && !publicHome) throw new Error('Provide a public home page when adding public website routes.');
   const nav = useMemo(() => scopeNavigation([...navigation, ...PLATFORM_NAV], base), [navigation, base]);
   const path = value => scopedBackofficePath(base, value);
   const routes = <Routes>
@@ -64,7 +65,10 @@ export function CloudgateBackoffice({ client, metadata, navigation = [], childre
       <Route path="widgets/*" element={<WidgetLibrary />} />
       <Route path="*" element={<Navigate to={path(fallback)} replace />} />
     </Route></Route></Route></Route>
-    {publicHome && <Route path="/" element={<PublicHomeGate>{publicHome}</PublicHomeGate>} />}
+    {publicHome && <Route element={<PublicHomeGate />}>
+      <Route path="/" element={publicHome} />
+      {publicRoutes}
+    </Route>}
     {base && [...new Set([...navigationPaths([...navigation, ...PLATFORM_NAV]), '/profile', '/account/settings', '/about', '/notifications', '/sample-users'])]
       .filter(value => value !== '/' && value !== base && !value.startsWith(`${base}/`)).map(value => <Route key={value} path={value} element={<LegacyRedirect to={path(value)} />} />)}
     <Route path="*" element={<Navigate to={publicHome ? '/' : path(fallback)} replace />} />

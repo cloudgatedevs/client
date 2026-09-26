@@ -82,7 +82,12 @@ export function paletteVariables(values, dark = false) {
       contrastRatio('#ffffff', colors.theme_primary) >= 4.5 ? '255 255 255' : '0 0 0',
     '--accent-text': readable(colors.theme_primary, backgrounds, dark),
   });
-  for (const tone of ['success', 'warning', 'danger', 'info']) variables[`--cgw-${tone}`] = readable(colors[`theme_${tone}`], backgrounds, dark);
+  for (const tone of ['success', 'warning', 'danger', 'info']) {
+    const fill=readable(colors[`theme_${tone}`], backgrounds, dark);
+    variables[`--cgw-${tone}`]=fill;
+    // Solid semantic buttons need a foreground chosen against their actual palette fill.
+    variables[`--cgw-${tone}-fg`]=contrastRatio(fill.split(' ').map(Number),'#ffffff') >= 4.5 ? '255 255 255' : '0 0 0';
+  }
   ['primary', 'secondary', 'success', 'warning', 'danger', 'info'].forEach((tone, i) => {
     variables[`--cgw-chart-${i + 1}`] = `rgb(${readable(colors[`theme_${tone}`], backgrounds, dark)})`;
   });

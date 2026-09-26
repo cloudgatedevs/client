@@ -1,7 +1,8 @@
 // Small shared UI primitives for the admin console.
-import { useEffect, useState } from 'react';
+import { isValidElement, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Search } from 'lucide-react';
+import { TableExport } from '../widgets/TableExport.jsx';
 
 /** Tiny async-fetch hook: const { data, loading, error, reload } = useAsync(fn, [deps]) */
 export function useAsync(fn, deps = []) {
@@ -64,6 +65,8 @@ export const Badge = ({ tone = 'gray', children }) => (
 );
 
 const cellValue = (column, row) => (column.render ? column.render(row) : row[column.key] ?? '—');
+const cellText = value => Array.isArray(value) ? value.map(cellText).join(' ') : isValidElement(value)
+  ? cellText(value.props.children) : value == null || typeof value === 'boolean' ? '' : String(value);
 
 const IconChevron = (p) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}>
@@ -87,7 +90,7 @@ const IconChevron = (p) => (
  * record, so the entire thing should be the target rather than just the name.
  * Nested links stop propagation, so they still win.
  */
-export const Table = ({ columns, rows, empty = 'Nothing here yet.', rowHref }) => {
+export const Table = ({ columns, rows, empty = 'Nothing here yet.', rowHref, label = 'Records', exportable = true }) => {
   const navigate = useNavigate();
   const titleCols = columns.filter((c) => c.mobile === 'title');
   const metaCols = columns.filter((c) => c.mobile === 'meta');
@@ -96,6 +99,9 @@ export const Table = ({ columns, rows, empty = 'Nothing here yet.', rowHref }) =
 
   return (
     <>
+      {exportable && <div className="cgw-export-toolbar"><TableExport label={label} getRows={() => rows || []}
+        columns={columns.filter(column => column.mobile !== 'actions' && column.key !== 'actions' && column.exportable !== false)
+          .map(column => ({ ...column, exportValue: column.exportValue || (row => row[column.key] ?? cellText(cellValue(column, row))) }))} /></div>}
       {/* Mobile: one card per row — no sideways scrolling to read a record. */}
       <div className="flex flex-col gap-3 md:hidden">
         {rows?.length ? (

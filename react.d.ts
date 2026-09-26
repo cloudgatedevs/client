@@ -17,7 +17,7 @@ export type NavigationItem = NavigationLink | NavigationGroup;
 export interface AppMetadata { name?: string; description?: string; version?: string; [key: string]: unknown }
 export interface CloudgateContextValue { client: CloudgatePlatform; metadata: AppMetadata; navigation: NavigationItem[]; identity: AppIdentity | null; basePath: string; publicWebsite: boolean; backofficePath(path?: string): string }
 export function CloudgateProvider(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode; basePath?: string; publicWebsite?: boolean }): ReactNode;
-export function CloudgateBackoffice(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode; fallback?: string; developerMode?: boolean; basePath?: string; publicHome?: ReactNode }): ReactNode;
+export function CloudgateBackoffice(props: { client: CloudgatePlatform; metadata?: AppMetadata; navigation?: NavigationItem[]; children?: ReactNode; fallback?: string; developerMode?: boolean; basePath?: string; publicHome?: ReactNode; publicRoutes?: ReactNode }): ReactNode;
 export function useCloudgate(): CloudgateContextValue;
 export const PLATFORM_NAV: NavigationItem[];
 export interface AuthContextValue {
@@ -31,7 +31,7 @@ export const AuthContext: Context<AuthContextValue | null>;
 export function AuthProvider(props: { children?: ReactNode; publicAccess?: boolean; onLogoutRedirect?: () => void }): ReactNode;
 export function useAuthContext(): AuthContextValue;
 export function usePermissions(): { can(permission: string): boolean; permissions: IdpRolePermission[] };
-export function RequireAuth(): ReactNode;
+export function RequireAuth(props: { children?: ReactNode }): ReactNode;
 export function RequireAdmin(): ReactNode;
 export function Profile(): ReactNode;
 export function CloudgateAccountLink(): ReactNode;

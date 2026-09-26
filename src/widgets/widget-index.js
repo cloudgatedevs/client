@@ -1,11 +1,22 @@
 // Lightweight navigation metadata. Full docs and examples stay in the lazy catalogue.
+import { advancedChartIndex } from './chart-index.js';
+import { cardIndex } from './card-index.js';
 export const widgetIndex = [
   { id: "icons", name: "Icon library", category: "Foundations" },
+  { id: "typography", name: "Text styles", category: "Foundations" },
   {
     id: "data-table",
-    name: "Data table",
+    name: "Static table",
     category: "Data",
   },
+  { id: "lazy-table", name: "Lazy loading", category: "Data" },
+  { id: "selection-table", name: "Selection & bulk actions", category: "Data" },
+  { id: "row-selection-table", name: "Row selection", category: "Data" },
+  { id: "subtable", name: "Expandable subtables", category: "Data" },
+  { id: "advanced-table", name: "Advanced filters", category: "Data" },
+  {id:'calendar',name:'Calendar',category:'Scheduling'},
+  {id:'scrum-board',name:'Scrum board',category:'Scheduling'},
+  {id:'timeline',name:'Timeline',category:'Scheduling'},
   {
     id: "line-chart",
     name: "Line chart",
@@ -26,6 +37,9 @@ export const widgetIndex = [
     name: "Metric card",
     category: "Cards",
   },
+  {id:'cards',name:'Card gallery',category:'Cards'},
+  ...cardIndex,
+  ...advancedChartIndex,
   {
     id: "card",
     name: "Card",
@@ -42,17 +56,18 @@ export const widgetIndex = [
     category: "Forms",
   },
   { id: "form", name: "Form validation", category: "Forms" },
-  { id: "search-select", name: "Searchable select", category: "Forms" },
   {
     id: "select",
     name: "Select",
     category: "Forms",
   },
+  { id: "radio", name: "Radio group", category: "Forms" },
   {
     id: "code-editor",
     name: "Code editor",
     category: "Forms",
   },
+  {id:'wysiwyg',name:'WYSIWYG editor',category:'Forms'},
   {
     id: "slider",
     name: "Slider",

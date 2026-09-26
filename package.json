@@ -27,6 +27,7 @@
       "types": "./src/widgets/catalog.d.ts",
       "default": "./src/widgets/catalog.js"
     },
+    "./widgets/manifest": "./src/widgets/picker-manifest.json",
     "./tailwind": "./tailwind.preset.js",
     "./package.json": "./package.json"
   },
@@ -82,6 +83,7 @@
     "**/*.css"
   ],
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "11.1.2",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.12",
     "@codemirror/lang-javascript": "^6.2.5",
@@ -90,6 +92,8 @@
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/language": "^6.12.4",
     "@codemirror/view": "^6.43.13",
+    "@dnd-kit/core": "6.3.1",
+    "@fullcalendar/react": "7.1.0",
     "@lezer/highlight": "^1.2.4",
     "@radix-ui/react-popover": "^1.1.23",
     "@uiw/react-codemirror": "^4.25.12",
@@ -97,7 +101,12 @@
     "@uppy/dashboard": "4.3.3",
     "@uppy/react": "4.2.3",
     "@uppy/webcam": "4.1.2",
-    "react-easy-crop": "5.5.7"
+    "ckeditor5": "48.1.1",
+    "dompurify": "3.4.16",
+    "echarts": "^6.1.0",
+    "react-easy-crop": "5.5.7",
+    "temporal-polyfill": "1.0.5",
+    "write-excel-file": "^4.1.1"
   },
   "peerDependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -129,6 +138,7 @@
     "@types/react-dom": "18.3.1",
     "autoprefixer": "10.5.4",
     "esbuild": "0.21.5",
+    "jsdom": "30.1.1",
     "lucide-react": "1.47.0",
     "postcss": "8.5.26",
     "react": "18.3.1",

@@ -688,14 +688,37 @@ Deploy the matching Cloudgate account-security migration/backend and Hub sign-in
 ## Public website and back office
 
 Pass `basePath="/backoffice"` and `publicHome={<Home />}` to `CloudgateBackoffice` inside your
-BrowserRouter to serve an anonymous home page at `/` alongside the protected back office.
+BrowserRouter to serve a website at `/` alongside the protected back office.
 Application routes and navigation remain relative to the back office (for example `/orders`
 opens `/backoffice/orders`). `useCloudgate().backofficePath()` builds links to shared screens.
 Existing integrations that omit these props retain their root-mounted workspace.
 
-The shared Settings screen saves **Enable public website** per web app and environment.
+The shared Settings screen saves **Enable public website** and **Website access** per web app
+and environment. Choose **Everyone** for anonymous browsing or **Signed-in users** for an app
+such as a wallet or member portal. Signed-in users need an active app account, not back-office
+permissions. Disabling the website sends visitors to the back office, where role permissions
+still apply. Existing installations default to Everyone; no data migration is needed.
+
+The stored flags are `enable_public_website` and `require_public_website_login` (string booleans).
+Deploy the updated Cloudgate server and SDK together before enabling required sign-in.
 Public bootstrap reads only appearance and registration policy without sending a bearer token;
-changes still use the existing IdP Admin endpoint with revision checks. Branding resets preserve
-the website setting. The public header can use `useSettings().allowSelfRegistration`,
+changes require `backoffice.settings.edit` through the existing IdP endpoint with revision checks.
+Branding resets preserve both website access settings. The public header can use `useSettings().allowSelfRegistration`,
 `client.signupUrl(returnUrl)`, and `canAccessBackoffice(profile)`. Back-office sign-in
 returns to the requested deep link. Update the server to include `GET /api/idp/{tenant}/website`.
+
+Add customer-facing pages through `publicRoutes` (React Router `Route` elements). They share
+the website access gate and preserve their path, query and hash through hosted sign-in:
+
+```jsx
+<CloudgateBackoffice client={client} basePath="/backoffice" publicHome={<Home />}
+  publicRoutes={<Route path="/wallet/*" element={<Wallet />} />}>
+  <Route index element={<AdminDashboard />} />
+</CloudgateBackoffice>
+```
+
+Keep customer pages inside this route group so the access setting covers them. Website
+content does not mount until settings and the required session/profile have loaded; failed
+checks offer retry. Signing out returns to `/` and requires sign-in again when configured.
+This gates page rendering; application APIs must still enforce authentication, tenant and
+record ownership, including for wallet data. Self-registration remains a separate tenant policy.

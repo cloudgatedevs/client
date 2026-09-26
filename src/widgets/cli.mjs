@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
+import { createWidgetManifest } from './manifest.mjs';
 import {
   getWidget,
   getWidgetRecipe,
@@ -12,6 +13,9 @@ const { version } = JSON.parse(
 const [command = "help", ...args] = process.argv.slice(2);
 let result;
 switch (command) {
+  case "manifest":
+    result = createWidgetManifest();
+    break;
   case "search":
     result = searchWidgets(args.join(" ")).map(
       ({ id, name, category, description, exports }) => ({
@@ -39,6 +43,7 @@ switch (command) {
     result = {
       version,
       usage: [
+        "cloudgate-widgets manifest",
         "cloudgate-widgets search [terms]",
         "cloudgate-widgets widget data-table",
         "cloudgate-widgets recipe remote-table-edit",

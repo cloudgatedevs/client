@@ -188,7 +188,7 @@ test("all catalogue examples and recipes compile against actual public widget ex
             builder.onResolve(
               {
                 filter:
-                  /^(react|react-dom|lucide-react|@radix-ui\/react-dialog)(\/.*)?$/,
+                    /^(react|react-dom|lucide-react|@radix-ui\/react-dialog|ckeditor5|@ckeditor\/ckeditor5-react|@fullcalendar\/react|@dnd-kit\/core)(\/.*)?$/,
               },
               (args) => ({ path: args.path, external: true }),
             );

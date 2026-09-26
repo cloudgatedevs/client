@@ -30,12 +30,12 @@ export function useNavigationPreferences(key) {
 function NavigationNode({ item, activeKey, expanded, toggle, searching, onNavigate, platform }) {
   const id = useId();
   const group = Boolean(item.children);
-  const Icon = item.icon || (group ? Folder : Circle);
+  const Icon = item.icon === null ? null : item.icon || (group ? Folder : Circle);
   const active = item.key === activeKey;
   if (!group) return <li>
     <Link to={item.to} aria-current={active ? 'page' : undefined} onClick={onNavigate}
       title={item.label} className={`nav-item ${active ? 'is-active' : ''}`}>
-      <Icon className="nav-icon" size={16} strokeWidth={1.7} aria-hidden="true" />
+      {Icon && <Icon className="nav-icon" size={16} strokeWidth={1.7} aria-hidden="true" />}
       <span className="nav-label">{item.label}</span>
     </Link>
   </li>;
@@ -47,7 +47,7 @@ function NavigationNode({ item, activeKey, expanded, toggle, searching, onNaviga
     <button type="button" className={`nav-item nav-group-toggle ${activeBranch ? 'has-active' : ''}`}
       aria-expanded={open} aria-controls={id} onClick={() => toggle(item.key, !open)} title={item.label}
       aria-disabled={searching || undefined}>
-      <Icon className="nav-icon" size={16} strokeWidth={1.7} aria-hidden="true" />
+      {Icon && <Icon className="nav-icon" size={16} strokeWidth={1.7} aria-hidden="true" />}
       <span className="nav-label">{item.label}</span>
       <ChevronRight className={`nav-chevron ${open ? 'is-open' : ''}`} size={13} aria-hidden="true" />
     </button>
