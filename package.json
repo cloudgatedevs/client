@@ -1,6 +1,6 @@
 {
   "name": "@cloudgatedevs/cloudgate-client",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Cloudgate native platform APIs, IdP sessions and optional React back office, with workflow client compatibility.",
   "type": "module",
   "main": "./src/index.js",
