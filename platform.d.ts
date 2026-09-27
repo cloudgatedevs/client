@@ -218,7 +218,7 @@ export function createAppAnalyticsClient(options: { request?: PlatformRequest; a
   pages(query?: AnalyticsQuery): Promise<Record<string, any>>; sessions(query?: AnalyticsQuery): Promise<Record<string, any>>;
 };
 export function createWorkflowLogsClient(options: { request: PlatformRequest; projectPath?: string; resolveAppIdentity: IdentityResolver }): {
-  scope: FeatureScope; list(query?: Record<string, unknown> & { signal?: AbortSignal }): Promise<Record<string, any>>;
+  scope: FeatureScope; list(query?: Record<string, unknown> & { search?: string; signal?: AbortSignal }): Promise<Record<string, any>>;
   summary(periodHours?: number, options?: PlatformRequestOptions): Promise<Record<string, any>>;
   get(id: string, options?: PlatformRequestOptions): Promise<Record<string, any>>;
   nodes(sessionId: string, options?: PlatformRequestOptions): Promise<Array<Record<string, any>>>;

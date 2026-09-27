@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { RefreshCw, ArrowUpRight, Eye, Users, UserCheck, Timer, MousePointerClick, ChartNoAxesCombined, ChevronLeft, ChevronRight, X, Activity, Info } from 'lucide-react';
+import { RefreshCw, Eye, Users, UserCheck, Timer, MousePointerClick, ChartNoAxesCombined, ChevronLeft, ChevronRight, X, Activity, Info } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
+import { PageHead } from '../components/ui.jsx';
+import { usePermissions } from '../auth/permissions.jsx';
+import { BACKOFFICE_PERMISSIONS } from '../../platform/backoffice-permissions.js';
 
 import { ANALYTICS_PERIODS, count, duration, percent, comparison, countryName, visitorName, analyticsDateRange } from '../../platform/analytics-format.js';
 
@@ -59,8 +62,10 @@ function VisitorCalls({ visitor, period, close }) {
 
 export function CloudgateAppAnalytics({ api: suppliedApi } = {}) {
   const { client } = useCloudgate();
+  const { can } = usePermissions();
   const api = suppliedApi ?? client.analytics;
   const workflowLogsScope = client.logs.scope;
+  const canViewWorkflowLogs = workflowLogsScope.configured && can(BACKOFFICE_PERMISSIONS.LogsView);
   const [period, setPeriod] = useState(3), [refresh, setRefresh] = useState(0);
   const [pathPage, setPathPage] = useState(0), [visitorPage, setVisitorPage] = useState(0);
   const [selectedPath, setSelectedPath] = useState(''), [deviceTab, setDeviceTab] = useState('deviceTypes');
@@ -72,8 +77,6 @@ export function CloudgateAppAnalytics({ api: suppliedApi } = {}) {
   const reload = () => { setPathPage(0); setVisitorPage(0); setRefresh(n => n + 1); };
   const changePeriod = value => { setPeriod(Number(value)); setPathPage(0); setVisitorPage(0); setSelectedPath(''); setVisitor(null); };
   const choosePath = path => { setSelectedPath(current => current === path ? '' : path); setVisitorPage(0); };
-  const address = data?.app?.customUrl || data?.app?.url;
-  const safeAddress = /^https?:\/\//i.test(address || '') ? address : null;
   const referrers = data?.referrers;
   const sources = referrers ? [
     { name: 'Direct', count: referrers.directViewCount || 0 },
@@ -81,7 +84,13 @@ export function CloudgateAppAnalytics({ api: suppliedApi } = {}) {
     ...(referrers.items || []).map(row => ({ name: row.host, count: row.viewCount })),
   ].filter(row => row.count > 0).sort((a, b) => b.count - a.count) : [];
   const scope = { ...api.scope, ...data?.scope };
-  return <div className="cga"><div className="cga-toolbar"><div className="cga-context"><span className="cga-environment">{scope.isProduction ? 'Production' : 'Sandbox'}</span><span>{data?.app?.name || scope.projectPath || 'This app'}</span>{safeAddress && <a href={safeAddress} target="_blank" rel="noreferrer">{safeAddress.replace(/^https?:\/\//, '').replace(/\/$/, '')}<ArrowUpRight size={14}/></a>}</div><div className="cga-controls"><label><span className="cga-sr">Analytics period</span><select value={period} onChange={e => changePeriod(e.target.value)}>{ANALYTICS_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="cga-button" onClick={reload} disabled={overview.loading}><RefreshCw size={15} className={overview.loading ? 'cga-spin' : ''}/>Refresh</button></div></div>
+  return <div className="cga">
+    <PageHead title="Analytics" subtitle="Understand your website traffic.">
+      <div className="cga-controls">
+        <label><span className="cga-sr">Analytics period</span><select value={period} onChange={e => changePeriod(e.target.value)}>{ANALYTICS_PERIODS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <button className="cga-button" onClick={reload} disabled={overview.loading}><RefreshCw size={15} className={overview.loading ? 'cga-spin' : ''}/>Refresh</button>
+      </div>
+    </PageHead>
     {overview.error ? <Failure error={overview.error} retry={reload}/> : <>
       <div className="cga-metrics">
         <Metric icon={Eye} title="Page views" value={count(summary.viewCount)} current={summary.viewCount} previous={summary.previousViewCount} loading={overview.loading}/>
@@ -97,7 +106,7 @@ export function CloudgateAppAnalytics({ api: suppliedApi } = {}) {
         <section className="cga-card"><header><div><h2>Traffic sources</h2><p>Direct visits and referring websites.</p></div></header>{overview.loading ? <Loading/> : <Breakdown rows={sources} total={summary.viewCount} limit={12}/>}</section>
         <section className="cga-card"><header><div><h2>Devices & browsers</h2><p>How people visit your website.</p></div></header><div className="cga-tabs" role="group" aria-label="Device breakdown">{[['deviceTypes', 'Devices'], ['browsers', 'Browsers'], ['operatingSystems', 'Operating systems']].map(([key, label]) => <button key={key} aria-pressed={deviceTab === key} onClick={() => setDeviceTab(key)}>{label}</button>)}</div>{overview.loading ? <Loading/> : <Breakdown rows={data?.devices?.[deviceTab] || []}/>}</section>
       </div>
-      <section className="cga-card cga-visitors"><header><div><h2>Visitors</h2><p>{selectedPath ? <>Sessions that visited <code>{selectedPath}</code>. <button className="cga-link" onClick={() => choosePath(selectedPath)}>Clear filter</button></> : 'Recent visitor sessions for this website.'}</p></div><span className="cga-pill">{count(sessions.data?.totalCount)} sessions</span></header>{sessions.loading ? <Loading label="Loading visitors…"/> : sessions.error ? <Failure error={sessions.error} retry={reload}/> : !sessions.data?.items?.length ? <Empty>{selectedPath ? 'No visitor sessions for this page in this period.' : 'No visitor sessions recorded in this period.'}</Empty> : <div className="cga-table-wrap"><table><thead><tr><th>Visitor</th><th>Country</th><th className="cga-right">Views</th><th className="cga-right">Duration</th><th>Last seen</th><th><span className="cga-sr">Workflow calls</span></th></tr></thead><tbody>{sessions.data.items.map((row, i) => <tr key={`${row.clientSessionId}-${row.anonymousVisitorId}-${i}`}><td><strong>{visitorName(row)}</strong>{row.idpUserEmailAddress && visitorName(row) !== row.idpUserEmailAddress ? <small>{row.idpUserEmailAddress}</small> : !row.idpUserId && <small>Session {(row.anonymousVisitorId || row.clientSessionId || '').slice(0, 12)}</small>}</td><td>{countryName(row.country)}</td><td className="cga-right">{count(row.viewCount)}</td><td className="cga-right">{duration(row.totalDurationMs)}</td><td className="cga-time">{new Date(row.lastSeen).toLocaleString()}</td><td>{row.idpUserId && workflowLogsScope.configured && <button className="cga-button" title={`Workflow calls for ${visitorName(row)}`} aria-label={`Workflow calls for ${visitorName(row)}`} onClick={() => setVisitor(row)}><Activity size={15}/></button>}</td></tr>)}</tbody></table></div>}<Pager page={visitorPage} total={sessions.data?.totalCount || 0} size={10} loading={sessions.loading} onChange={setVisitorPage} label="sessions"/></section>
+      <section className="cga-card cga-visitors"><header><div><h2>Visitors</h2><p>{selectedPath ? <>Sessions that visited <code>{selectedPath}</code>. <button className="cga-link" onClick={() => choosePath(selectedPath)}>Clear filter</button></> : 'Recent visitor sessions for this website.'}</p></div><span className="cga-pill">{count(sessions.data?.totalCount)} sessions</span></header>{sessions.loading ? <Loading label="Loading visitors…"/> : sessions.error ? <Failure error={sessions.error} retry={reload}/> : !sessions.data?.items?.length ? <Empty>{selectedPath ? 'No visitor sessions for this page in this period.' : 'No visitor sessions recorded in this period.'}</Empty> : <div className="cga-table-wrap"><table><thead><tr><th>Visitor</th><th>Country</th><th className="cga-right">Views</th><th className="cga-right">Duration</th><th>Last seen</th><th><span className="cga-sr">Workflow calls</span></th></tr></thead><tbody>{sessions.data.items.map((row, i) => <tr key={`${row.clientSessionId}-${row.anonymousVisitorId}-${i}`}><td><strong>{visitorName(row)}</strong>{row.idpUserEmailAddress && visitorName(row) !== row.idpUserEmailAddress ? <small>{row.idpUserEmailAddress}</small> : !row.idpUserId && <small>Session {(row.anonymousVisitorId || row.clientSessionId || '').slice(0, 12)}</small>}</td><td>{countryName(row.country)}</td><td className="cga-right">{count(row.viewCount)}</td><td className="cga-right">{duration(row.totalDurationMs)}</td><td className="cga-time">{new Date(row.lastSeen).toLocaleString()}</td><td>{row.idpUserId && canViewWorkflowLogs && <button className="cga-button" title={`Workflow calls for ${visitorName(row)}`} aria-label={`Workflow calls for ${visitorName(row)}`} onClick={() => setVisitor(row)}><Activity size={15}/></button>}</td></tr>)}</tbody></table></div>}<Pager page={visitorPage} total={sessions.data?.totalCount || 0} size={10} loading={sessions.loading} onChange={setVisitorPage} label="sessions"/></section>
       <p className="cga-footnote">Source: Cloudgate Web App Insights · UTC reporting periods · {scope.isProduction ? 'Production' : 'Sandbox'} traffic</p>
     </>}{visitor && <VisitorCalls visitor={visitor} period={period} close={() => setVisitor(null)}/>}</div>;
 }

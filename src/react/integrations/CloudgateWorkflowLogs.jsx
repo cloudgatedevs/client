@@ -1,6 +1,6 @@
-// Logs page for the back office: every workflow call this installed app made to Cloudgate,
-// read from Cloudgate's own log store and scoped to this app's controller and environment
-// (see services/workflowLogsApi.js). The same two files (this one + cloudgate-workflow-logs.css)
+// Logs page for the back office: workflow calls from Cloudgate's own log store,
+// scoped to the tenant's accessible controllers and environment, or one configured controller.
+// The same two files (this one + cloudgate-workflow-logs.css)
 // ship in every App Store app; each back office mounts <CloudgateWorkflowLogs/> on its own
 // Logs page.
 //
@@ -11,7 +11,7 @@
 // response, masked when the action masks data.
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Activity, ChevronRight, RefreshCw, X } from 'lucide-react';
+import { Activity, ChevronRight, RefreshCw, Search, X } from 'lucide-react';
 import { useCloudgate } from '../context.jsx';
 
 const PAGE_SIZE = 50;
@@ -56,9 +56,10 @@ function useAsync(fn, deps) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     let alive = true;
+    const controller = new AbortController();
     setState((s) => ({ ...s, loading: true, error: null }));
-    fn().then((data) => alive && setState({ data, loading: false, error: null })).catch((error) => alive && setState({ data: null, loading: false, error }));
-    return () => { alive = false; };
+    fn(controller.signal).then((data) => alive && setState({ data, loading: false, error: null })).catch((error) => alive && !controller.signal.aborted && setState({ data: null, loading: false, error }));
+    return () => { alive = false; controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
   return { ...state, reload: () => setTick((t) => t + 1) };
@@ -232,13 +233,12 @@ const Drawer = ({ id, onClose }) => {
 };
 
 const Unavailable = ({ error }) => {
-  const { client, identity } = useCloudgate();
-  const workflowLogsApi = client.logs;
-  const workflowLogsScope = { ...client.logs.scope, isProduction: identity?.environment === "prod" };
+  const { client } = useCloudgate();
+  const workflowLogsScope = client.logs.scope;
   const code = error?.code;
-  const title = code === 'forbidden' ? 'Admin account required' : code === 'not-installed' ? 'This controller is not an installed app' : 'Workflow logs are not available here';
+  const title = code === 'forbidden' ? 'Logs access required' : code === 'not-installed' ? 'This controller is not available' : 'Workflow logs are not available here';
   const text = !workflowLogsScope.configured
-    ? 'This app has no workflow controller configured. Its native back-office features work independently. If you add workflows, set VITE_CLOUDGATE_API_PROJECT to their controller path to see logs here.'
+    ? 'The workflow controller setting is invalid. Choose a valid controller or leave the setting empty to view all accessible controllers.'
     : error?.message || 'Update the Cloudgate host to a version that ships the workflow logs admin API.';
   return <Empty title={title} text={text} />;
 };
@@ -251,20 +251,30 @@ const Unavailable = ({ error }) => {
 export function CloudgateWorkflowLogs({ title = 'Logs', showTitle = true, titleClassName }) {
   const { client, identity } = useCloudgate();
   const workflowLogsApi = client.logs;
-  const workflowLogsScope = { ...client.logs.scope, isProduction: identity?.environment === "prod" };
+  const workflowLogsScope = { ...client.logs.scope, isProduction: /^(prod|production)$/.test(identity?.environment || client.logs.scope.environment) };
   const [period, setPeriod] = useState(24);
   const [outcome, setOutcome] = useState('');
   const [route, setRoute] = useState('');
   const [minMs, setMinMs] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [openId, setOpenId] = useState(null);
   const configured = workflowLogsScope.configured;
 
-  const summary = useAsync(() => (configured ? workflowLogsApi.summary(period) : Promise.resolve(null)), [period, configured]);
+  useEffect(() => {
+    const next = searchInput.trim();
+    if (next === search) return;
+    const timer = setTimeout(() => { setSearch(next); setPage(0); }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput, search]);
+  const clearSearch = () => { setSearchInput(''); setSearch(''); setPage(0); };
+  const pendingSearch = searchInput.trim() !== search;
+  const summary = useAsync(signal => (configured ? workflowLogsApi.summary(period, { signal }) : Promise.resolve(null)), [period, configured]);
   const since = useMemo(() => new Date(Date.now() - period * 3600 * 1000).toISOString(), [period, summary.data?.to]);
   const list = useAsync(
-    () => (configured ? workflowLogsApi.list({ skip: page * PAGE_SIZE, take: PAGE_SIZE, outcome: outcome || undefined, route: route || undefined, minDurationMs: minMs || undefined, startDate: since }) : Promise.resolve(null)),
-    [period, outcome, route, minMs, page, configured, since],
+    signal => (configured ? workflowLogsApi.list({ skip: page * PAGE_SIZE, take: PAGE_SIZE, search: search || undefined, outcome: outcome || undefined, route: route || undefined, minDurationMs: minMs || undefined, startDate: since, signal }) : Promise.resolve(null)),
+    [period, outcome, route, minMs, search, page, configured, since],
   );
   useEffect(() => { setPage(0); }, [period, outcome, route, minMs]);
 
@@ -276,7 +286,7 @@ export function CloudgateWorkflowLogs({ title = 'Logs', showTitle = true, titleC
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const routes = useMemo(() => (s?.byRoute ?? []).map((r) => r.route).filter(Boolean).sort(), [s]);
   const blocking = !configured || ['unavailable', 'forbidden', 'not-installed'].includes(summary.error?.code);
-  const hasFilters = Boolean(outcome || route || minMs);
+  const hasFilters = Boolean(outcome || route || minMs || searchInput.trim());
 
   return (
     <div className="cwl">
@@ -284,7 +294,7 @@ export function CloudgateWorkflowLogs({ title = 'Logs', showTitle = true, titleC
         <div>
           {showTitle ? <h2 className={titleClassName}>{title}</h2> : null}
           <p>
-            {configured ? <>Every workflow call this app made to Cloudgate — <span className="cwl-mono">/{workflowLogsScope.projectPath}</span> in <Badge plain tone={workflowLogsScope.isProduction ? 'violet' : 'blue'}>{workflowLogsScope.isProduction ? 'production' : 'sandbox'}</Badge>{s?.fromInstall === false ? <span className="cwl-dim"> (developer tenant)</span> : null}</> : 'Workflow calls recorded by Cloudgate for this app.'}
+            {configured ? <>Workflow calls recorded by Cloudgate — {workflowLogsScope.projectPath === '*' ? <span>All controllers</span> : <span className="cwl-mono">/{workflowLogsScope.projectPath}</span>} in <Badge plain tone={workflowLogsScope.isProduction ? 'violet' : 'blue'}>{workflowLogsScope.isProduction ? 'production' : 'sandbox'}</Badge></> : 'Workflow calls recorded by Cloudgate for this app.'}
           </p>
         </div>
         <div className="cwl-head-actions">
@@ -319,6 +329,13 @@ export function CloudgateWorkflowLogs({ title = 'Logs', showTitle = true, titleC
           </div>
 
           <div className="cwl-filters">
+            <div className="cwl-search">
+              <Search size={16} aria-hidden="true" />
+              <input type="search" aria-label="Search logs" placeholder="Search actions, emails or IDs…" maxLength={200}
+                title="Search action paths, user emails, call/session/user IDs, HTTP methods, status codes or country codes."
+                value={searchInput} onChange={event => setSearchInput(event.target.value)} />
+              {searchInput && <button type="button" className="cwl-search-clear" aria-label="Clear log search" onClick={clearSearch}><X size={15} aria-hidden="true" /></button>}
+            </div>
             <div className="cwl-seg" role="group" aria-label="Outcome">
               {OUTCOMES.map(([v, label]) => <button key={v} type="button" aria-pressed={outcome === v} onClick={() => setOutcome(v)}>{label}</button>)}
             </div>
@@ -330,13 +347,13 @@ export function CloudgateWorkflowLogs({ title = 'Logs', showTitle = true, titleC
             <select id="cwl-min" value={minMs} onChange={(e) => setMinMs(Number(e.target.value))} aria-label="Minimum duration">
               {MIN_DURATIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
             </select>
-            {hasFilters ? <button type="button" className="cwl-btn cwl-btn-sm" onClick={() => { setOutcome(''); setRoute(''); setMinMs(0); }}>Clear filters</button> : null}
-            <span className="cwl-count">{list.data ? `${total.toLocaleString()} calls in the last ${PERIODS.find(([h]) => h === period)?.[1]}` : ''}</span>
+            {hasFilters ? <button type="button" className="cwl-btn cwl-btn-sm" onClick={() => { setOutcome(''); setRoute(''); setMinMs(0); clearSearch(); }}>Clear filters</button> : null}
+            <span className="cwl-count" role="status">{list.loading || pendingSearch ? 'Loading calls…' : list.data ? `${total.toLocaleString()} calls in the last ${PERIODS.find(([h]) => h === period)?.[1]}` : ''}</span>
           </div>
 
           <ErrorNote error={list.error} />
           {list.loading ? <div className="cwl-card"><Skeleton lines={8} /></div> : !rows.length ? (
-            <Empty title="No calls match" text="Widen the period or clear the filters. Calls appear here as soon as the app talks to Cloudgate." />
+            <Empty title="No calls match" text={search ? 'Try another search, widen the period or clear the filters.' : 'Widen the period or clear the filters. Calls appear here when an accessible workflow runs in this environment.'} />
           ) : (
             <>
               <div className="cwl-card cwl-list">
@@ -363,9 +380,9 @@ export function CloudgateWorkflowLogs({ title = 'Logs', showTitle = true, titleC
               <div className="cwl-pager">
                 <span>{(page * PAGE_SIZE + 1).toLocaleString()}–{Math.min(total, (page + 1) * PAGE_SIZE).toLocaleString()} of {total.toLocaleString()} calls</span>
                 <div>
-                  <button type="button" className="cwl-btn cwl-btn-sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>
+                  <button type="button" className="cwl-btn cwl-btn-sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={pendingSearch || page === 0}>‹ Prev</button>
                   <span className="cwl-num cwl-muted">{page + 1} / {pages}</span>
-                  <button type="button" className="cwl-btn cwl-btn-sm" onClick={() => setPage(Math.min(pages - 1, page + 1))} disabled={page >= pages - 1}>Next ›</button>
+                  <button type="button" className="cwl-btn cwl-btn-sm" onClick={() => setPage(Math.min(pages - 1, page + 1))} disabled={pendingSearch || page >= pages - 1}>Next ›</button>
                 </div>
               </div>
             </>

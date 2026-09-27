@@ -67,7 +67,8 @@ export function createCloudgatePlatform(options = {}) {
     payments: createPaymentsClient({ request, resolveAppIdentity }),
     files: createFilesClient({ request, resolveAppIdentity, mediaFolder: options.mediaFolder || config.projectPath }),
     smtp: createSmtpClient({ request }),
-    logs: createWorkflowLogsClient({ request, resolveAppIdentity, projectPath: config.projectPath }),
+    // Preserve an explicit invalid path so Logs cannot treat it as an omitted controller scope.
+    logs: createWorkflowLogsClient({ request, resolveAppIdentity, projectPath: options.projectPath }),
     analytics: createAppAnalyticsClient({ request, ...config, resolvePublishedApp: async () => {
       const scope = await resolveAppIdentity();
       return scope.webAppId ? { webAppId: scope.webAppId, isProduction: /^prod/.test(scope.environment) } : null;

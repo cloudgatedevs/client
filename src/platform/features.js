@@ -70,12 +70,13 @@ export function createSmtpClient({ request }) {
 export class WorkflowLogsError extends CloudgatePlatformError {
   constructor(message, status = 0, code = 'error') { super(message, { status, code }); this.name = 'WorkflowLogsError'; }
 }
-/** Native observability API. No workflow is invoked by this client. */
+/** Native observability API. An omitted controller uses the server's tenant-scoped all-controllers view. */
 export function createWorkflowLogsClient({ request, projectPath = '', resolveAppIdentity }) {
-  const path = String(projectPath).trim().replace(/^\/+|\/+$/g, '');
-  const scope = { projectPath: path, environment: '', get isProduction() { return this.environment === 'prod'; }, configured: Boolean(path) };
+  const configuredPath = String(projectPath ?? '').trim();
+  const path = configuredPath ? configuredPath.replace(/^\/+|\/+$/g, '') : '*';
+  const scope = { projectPath: path, environment: '', get isProduction() { return /^(prod|production)$/.test(this.environment); }, configured: Boolean(path) };
   async function run(action, body = {}, options) {
-    if (!path) throw new WorkflowLogsError('No workflows are configured for this app.', 0, 'unavailable');
+    if (!path) throw new WorkflowLogsError('The configured workflow controller path is invalid. Set a controller path or leave it empty for all accessible controllers.', 0, 'configuration');
     const identity = await resolveAppIdentity();
     scope.environment = identity.environment;
     try { return await request(`admin/workflow-logs/${action}`, { ...options, body: { ...body, projectPath: path, environment: identity.environment } }); }

@@ -102,8 +102,16 @@ cannot change it. Published `cg-analytics.json` / injected metadata chooses the 
 Back-office entry requires `backoffice.access`; page and action permissions are checked separately.
 Role names do not grant access. The server checks the current stored grants on every request.
 The optional `projectPath` scopes native workflow observability and the developer workspace to
-one controller. Leave it empty to browse all accessible controllers. No default controller is
+one controller. Leave it empty to browse all accessible controllers. The Logs client sends the
+native API's `*` scope in this case, and the server applies tenant, controller and environment
+access checks. Logs and analytics visitor-call details require `backoffice.logs.view`. No default controller is
 created or invoked. Admin/user/appearance/payment routes never use HMAC secrets.
+
+The Logs search matches controller/action paths, user emails, exact call/session/user IDs,
+HTTP methods, status codes and country codes. It combines with the selected period, outcome,
+action and minimum duration, and searches on the server before counting and paging. Requests
+start after a short typing pause; clearing search returns to the first page. Deploy the matching
+Cloudgate backend and SDK together to enable search. No database migration is required.
 
 ### Payments
 
