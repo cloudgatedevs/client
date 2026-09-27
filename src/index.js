@@ -270,5 +270,3 @@ export {
 export { createCloudgateWebSockets, parseWebSocketBase } from "./websockets.js";
 
 export default createCloudgateClient;
-
-export * from "./platform/index.js";

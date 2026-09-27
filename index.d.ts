@@ -333,5 +333,3 @@ export function parseWebSocketBase(
 ): { wsOrigin: string; env: string } | null;
 
 export default createCloudgateClient;
-
-export * from './platform.js';
