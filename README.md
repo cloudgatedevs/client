@@ -294,8 +294,14 @@ After boot:
 auth.isAuthenticated();  // boolean
 auth.getUser();          // { id, displayName, email, claims } from the JWT
 auth.getAccessToken();   // valid token or null
-auth.logout();           // clear session (+ redirect back to login by default)
+auth.logout();           // clear session, revoke its IdP family, and redirect to login
 ```
+
+`logout()` clears local credentials synchronously and sends a navigation-safe request to
+`POST /api/idp/{tenancyName}/Logout`. Its promise resolves to `false` if remote revocation
+could not be confirmed (for example, while offline). Use `await auth.logout({ redirectToLogin: false })`
+when the application needs to show that result. The backend must include the IdP session-family update;
+older SDK releases only clear local credentials. No API credentials or provider tokens are logged.
 
 To send the user's bearer token on gateway calls, pass headers as a function —
 it's evaluated per request, so it always uses the current token:

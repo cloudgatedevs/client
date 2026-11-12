@@ -110,7 +110,10 @@ export function createCloudgateAuth({
   const listeners = new Set();
   let refreshPending = null;
   let generation = 0;
+  const storedIdentity = () => [getStoredAccessToken(), getStoredRefreshToken()];
+  let observedIdentity = storedIdentity();
   const notify = () => {
+    observedIdentity = storedIdentity();
     const session = currentSession();
     for (const listener of listeners) {
       try { listener(session); } catch { /* Subscribers cannot break authentication. */ }
@@ -355,8 +358,20 @@ export function createCloudgateAuth({
   }
 
   function logout({ redirectToLogin = true } = {}) {
+    const refreshToken = getStoredRefreshToken();
+    const tenant = resolveTenant();
     clearSession();
+    // Keep local logout synchronous. keepalive lets revocation finish across navigation;
+    // a rotated predecessor still identifies the same family on the server.
+    const revocation = apiUrl && tenant && refreshToken && doFetch
+      ? Promise.resolve().then(() => doFetch(`${apiUrl}/api/idp/${encodeURIComponent(tenant)}/Logout`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          credentials: "omit", redirect: "error", keepalive: true,
+          body: JSON.stringify({ refreshToken }),
+        })).then(response => response.ok).catch(() => false)
+      : Promise.resolve(true);
     if (redirectToLogin) login();
+    return revocation;
   }
 
   /** Accept tokens from a trusted IdP exchange, including the launcher callback. */
@@ -383,8 +398,15 @@ export function createCloudgateAuth({
   /** A caller owns the lifetime. Returns cleanup for timers and cross-tab listeners. */
   function startSessionMonitor({ intervalMs = 5000 } = {}) {
     let stopped = false;
+    const syncStoredSession = () => {
+      const identity = storedIdentity();
+      if (identity.every((value, index) => value === observedIdentity[index])) return;
+      generation++;
+      notify();
+    };
     const check = async () => {
       if (stopped) return;
+      syncStoredSession();
       const token = getStoredAccessToken();
       if (!token && !getStoredRefreshToken()) return;
       if (isTokenValid(token, EXPIRY_BUFFER_SECONDS)) return;
@@ -392,9 +414,11 @@ export function createCloudgateAuth({
       if (!stopped && !currentSession()) clearSession();
     };
     const onStorage = event => {
+      if (event.storageArea && event.storageArea !== store) return;
       if (event.key === null || [IDP_ACCESS_TOKEN_KEY, IDP_REFRESH_TOKEN_KEY, IDP_ACCESS_TOKEN_EXPIRY_KEY].includes(event.key)) {
-        generation++;
-        notify();
+        // Storage events may arrive after a newer refresh has already started.
+        // Invalidate it only when the stored identity actually changed.
+        syncStoredSession();
       }
     };
     const w = getWindow();

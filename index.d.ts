@@ -191,7 +191,8 @@ export interface CloudgateAuth {
   /** Build the login URL without navigating. */
   loginUrl(returnUrl?: string): string;
   /** Clear the session; optionally redirect back to the login page. */
-  logout(opts?: { redirectToLogin?: boolean }): void;
+  /** Clears local state immediately; resolves whether server-side session revocation succeeded. */
+  logout(opts?: { redirectToLogin?: boolean }): Promise<boolean>;
   /** Exchange the refresh token for new tokens (null on failure). */
   refresh(): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number } | null>;
   setSession(tokens: { accessToken: string; refreshToken?: string; expiresIn?: number }): CloudgateSession;
